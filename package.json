@@ -1,43 +1,25 @@
 {
-  "name": "novelmap",
-  "version": "0.1.0",
+  "name": "novelmap-monorepo",
+  "private": true,
+  "version": "0.2.0",
   "description": "Local-first story knowledgebase for series authors",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "tsc --noEmit"
-  },
-  "keywords": [
-    "novel",
-    "writing",
-    "knowledgebase",
-    "story",
-    "entities",
-    "local-first"
+  "workspaces": [
+    "packages/core",
+    "packages/server",
+    "packages/ui"
   ],
-  "author": "MangrovePub",
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspace=packages/core && npm run test --workspace=packages/server",
+    "dev:server": "npm run dev --workspace=packages/server",
+    "dev:ui": "npm run dev --workspace=packages/ui",
+    "dev": "npm run dev:server & npm run dev:ui"
+  },
+  "author": "Robert Cummer <robert@mangrovepub.com> (Mangrove Publishing LLC)",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MangrovePub/NovelMap.git"
-  },
-  "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^25.2.2",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
-  },
-  "dependencies": {
-    "@iarna/rtf-to-html": "^1.1.0",
-    "better-sqlite3": "^12.6.2",
-    "fast-xml-parser": "^5.3.5",
-    "mammoth": "^1.11.0",
-    "remark": "^15.0.1",
-    "remark-parse": "^11.0.0",
-    "unified": "^11.0.5"
+    "url": "https://github.com/MangrovePublishing/NovelMap.git"
   }
 }

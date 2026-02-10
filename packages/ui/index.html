@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<!--
+  NovelMap — Local-first story knowledgebase for series authors
+  Copyright (c) 2026 Robert Cummer, Mangrove Publishing LLC
+  Licensed under the MIT License
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="author" content="Robert Cummer, Mangrove Publishing LLC" />
+    <meta name="theme-color" content="#e94560" />
+    <meta name="description" content="Local-first story knowledgebase for series authors" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <title>NovelMap</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js");
+        });
+      }
+    </script>
+  </body>
+</html>

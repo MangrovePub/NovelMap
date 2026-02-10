@@ -1,0 +1,7 @@
+{
+  "name": "word-frequency",
+  "version": "1.0.0",
+  "description": "Analyzes word frequency across manuscripts. Finds the most common words, unique vocabulary per book, and overused words.",
+  "capabilities": ["analyzer", "view"],
+  "entry": "index.js"
+}

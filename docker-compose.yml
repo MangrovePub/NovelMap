@@ -1,0 +1,14 @@
+services:
+  novelmap:
+    build: .
+    ports:
+      - "3001:3001"
+    volumes:
+      - novelmap-data:/data
+    environment:
+      - NOVELMAP_PORT=3001
+      - NOVELMAP_DB_PATH=/data/novelmap.db
+    restart: unless-stopped
+
+volumes:
+  novelmap-data:

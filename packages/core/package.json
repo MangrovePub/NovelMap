@@ -1,0 +1,40 @@
+{
+  "name": "@novelmap/core",
+  "version": "0.1.0",
+  "description": "NovelMap core library — SQLite storage, parsers, views",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && cp src/db/schema.sql dist/db/schema.sql",
+    "test": "npx vitest run",
+    "test:watch": "npx vitest",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "novel",
+    "writing",
+    "knowledgebase",
+    "story",
+    "entities",
+    "local-first"
+  ],
+  "author": "Robert Cummer <robert@mangrovepub.com> (Mangrove Publishing LLC)",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.2.2",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@iarna/rtf-to-html": "^1.1.0",
+    "better-sqlite3": "^12.6.2",
+    "fast-xml-parser": "^5.3.5",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.11.0",
+    "remark": "^15.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5"
+  }
+}

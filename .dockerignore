@@ -1,0 +1,11 @@
+node_modules
+*/node_modules
+**/node_modules
+packages/*/dist
+.git
+.github
+*.md
+!README.md
+docs
+examples
+.DS_Store

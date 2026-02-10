@@ -3,6 +3,7 @@ import type {
   ImporterPlugin,
   ExporterPlugin,
   AnalyzerPlugin,
+  ViewPlugin,
 } from "./types.js";
 
 /**
@@ -42,12 +43,22 @@ export class PluginRegistry {
     );
   }
 
+  getViews(): ViewPlugin[] {
+    return [...this.plugins.values()].filter(
+      (p): p is ViewPlugin => p.manifest.capabilities.includes("view")
+    );
+  }
+
   getImporterForExtension(ext: string): ImporterPlugin | undefined {
     return this.getImporters().find((p) => p.extensions.includes(ext));
   }
 
   getExporterForFormat(format: string): ExporterPlugin | undefined {
     return this.getExporters().find((p) => p.format === format);
+  }
+
+  get(name: string): Plugin | undefined {
+    return this.plugins.get(name);
   }
 
   list(): Plugin[] {
