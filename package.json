@@ -32,7 +32,9 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
+    "@iarna/rtf-to-html": "^1.1.0",
     "better-sqlite3": "^12.6.2",
+    "fast-xml-parser": "^5.3.5",
     "mammoth": "^1.11.0",
     "remark": "^15.0.1",
     "remark-parse": "^11.0.0",
