@@ -71,7 +71,7 @@ export function Sidebar() {
         <img
           src="/images/mangrove-colophon.png"
           alt="Mangrove Publishing"
-          className="w-10 h-10 opacity-20 invert"
+          className="w-10 h-10 opacity-30"
         />
         <div className="text-center text-[10px] text-[--color-text-muted] leading-relaxed" style={{ fontFamily: "'Libre Baskerville', serif" }}>
           <div className="tracking-wider uppercase text-[9px]">Mangrove Publishing</div>

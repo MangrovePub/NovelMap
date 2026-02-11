@@ -1,7 +1,8 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, PerspectiveCamera } from "@react-three/drei";
+import { Environment, PerspectiveCamera } from "@react-three/drei";
 import { BookModel } from "./BookModel.tsx";
 import type { Manuscript } from "../../api/client.ts";
+import { resolveCoverUrl } from "../../api/client.ts";
 
 // Shelf plank geometry
 function ShelfPlank({ y }: { y: number }) {
@@ -70,14 +71,8 @@ export function BookShelf3D({
   return (
     <div className="w-full h-full min-h-[500px] rounded-xl overflow-hidden border border-[--color-bg-accent]">
       <Canvas shadows>
-        <PerspectiveCamera makeDefault position={[0, 2, 6]} fov={50} />
-        <OrbitControls
-          enablePan={false}
-          minDistance={3}
-          maxDistance={12}
-          minPolarAngle={Math.PI / 6}
-          maxPolarAngle={Math.PI / 2.2}
-        />
+        {/* Fixed camera angle — a pleasant shelf view for screenshots */}
+        <PerspectiveCamera makeDefault position={[0.5, 2.2, 5.5]} fov={48} />
 
         {/* Lighting */}
         <ambientLight intensity={0.4} />
@@ -115,6 +110,7 @@ export function BookShelf3D({
                     color={color}
                     height={height}
                     thickness={thickness}
+                    coverUrl={resolveCoverUrl(m.cover_url)}
                     onClick={() => onSelect(m.id)}
                   />
                 );

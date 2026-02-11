@@ -46,3 +46,38 @@ export function useImportManuscript() {
     },
   });
 }
+
+export function useUploadCover() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ manuscriptId, file }: { manuscriptId: number; file: File }) =>
+      api.uploadCover(manuscriptId, file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["manuscripts"] }),
+  });
+}
+
+export function useSetCoverUrl() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ manuscriptId, url }: { manuscriptId: number; url: string }) =>
+      api.setCoverUrl(manuscriptId, url),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["manuscripts"] }),
+  });
+}
+
+export function useDeleteCover() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (manuscriptId: number) => api.deleteCover(manuscriptId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["manuscripts"] }),
+  });
+}
+
+export function useReorderManuscripts() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, order }: { projectId: number; order: { id: number; series_order: number }[] }) =>
+      api.reorderManuscripts(projectId, order),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["manuscripts"] }),
+  });
+}

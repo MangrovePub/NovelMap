@@ -71,6 +71,32 @@ export function useDetectFullProject() {
   });
 }
 
+export function useExtractEntities() {
+  return useMutation({
+    mutationFn: ({ projectId, manuscriptId }: { projectId: number; manuscriptId?: number }) =>
+      manuscriptId
+        ? api.extractManuscript(projectId, manuscriptId)
+        : api.extractProject(projectId),
+  });
+}
+
+export function useConfirmExtraction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, candidates }: {
+      projectId: number;
+      candidates: { text: string; type: EntityType; metadata?: Record<string, unknown> }[];
+    }) => api.confirmExtraction(projectId, candidates),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["entities", vars.projectId] });
+      qc.invalidateQueries({ queryKey: ["fieldguide", vars.projectId] });
+      qc.invalidateQueries({ queryKey: ["crossbook", vars.projectId] });
+      qc.invalidateQueries({ queryKey: ["graph", vars.projectId] });
+      qc.invalidateQueries({ queryKey: ["timeline", vars.projectId] });
+    },
+  });
+}
+
 export function useCrossBookPresence(projectId: number | null) {
   return useQuery({
     queryKey: ["crossbook", projectId],

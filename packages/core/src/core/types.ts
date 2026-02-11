@@ -18,6 +18,8 @@ export interface Manuscript {
   project_id: number;
   title: string;
   file_path: string;
+  cover_url: string | null;
+  series_order: number | null;
   created_at: string;
 }
 

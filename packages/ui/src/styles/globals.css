@@ -1,15 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&display=swap');
 @import "tailwindcss";
 
+/* Dark theme: Walnut Library */
 @theme {
-  --color-bg-body: #1a1a2e;
-  --color-bg-card: #16213e;
-  --color-bg-accent: #0f3460;
-  --color-text-primary: #e0e0e0;
-  --color-text-secondary: #a0a0a0;
-  --color-text-muted: #888888;
+  --color-bg-body: #1c1108;
+  --color-bg-card: #2a1a10;
+  --color-bg-accent: #4a3020;
+  --color-text-primary: #f0e6d3;
+  --color-text-secondary: #c4b59a;
+  --color-text-muted: #8a7a66;
   --color-accent: #e94560;
-  --color-link: #a0c4ff;
+  --color-link: #d4a853;
   --color-entity-character: #e94560;
   --color-entity-location: #0f3460;
   --color-entity-organization: #533483;
@@ -18,16 +19,16 @@
   --color-entity-event: #4560e9;
 }
 
-/* Light theme overrides */
+/* Light theme: Warm Parchment */
 [data-theme="light"] {
-  --color-bg-body: #f5f5f5;
-  --color-bg-card: #ffffff;
-  --color-bg-accent: #e2e8f0;
-  --color-text-primary: #1a1a2e;
-  --color-text-secondary: #4a5568;
-  --color-text-muted: #718096;
-  --color-accent: #e94560;
-  --color-link: #2b6cb0;
+  --color-bg-body: #ede4d3;
+  --color-bg-card: #faf5eb;
+  --color-bg-accent: #b09878;
+  --color-text-primary: #2c1810;
+  --color-text-secondary: #5a4634;
+  --color-text-muted: #7d6e5c;
+  --color-accent: #d43b56;
+  --color-link: #8b4513;
 }
 
 html,
@@ -41,7 +42,11 @@ body,
 body {
   background: var(--color-bg-body);
   color: var(--color-text-primary);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Libre Baskerville', Georgia, serif;
 }
 
 /* Custom scrollbar */
@@ -57,8 +62,8 @@ body {
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #1a4a80;
+  background: #5c3a28;
 }
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e0;
+  background: #9a8468;
 }

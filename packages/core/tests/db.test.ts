@@ -28,6 +28,16 @@ describe("Database", () => {
     expect(names).toContain("relationship");
   });
 
+  it("has cover_url column on manuscript table", () => {
+    const cols = db.db.pragma("table_info(manuscript)") as { name: string }[];
+    expect(cols.map((c) => c.name)).toContain("cover_url");
+  });
+
+  it("has series_order column on manuscript table", () => {
+    const cols = db.db.pragma("table_info(manuscript)") as { name: string }[];
+    expect(cols.map((c) => c.name)).toContain("series_order");
+  });
+
   it("enforces foreign keys", () => {
     expect(() => {
       db.db

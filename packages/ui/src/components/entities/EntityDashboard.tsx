@@ -10,6 +10,7 @@ import {
 } from "../../hooks/use-entities.ts";
 import { EntityTypeBadge } from "../shared/EntityTypeBadge.tsx";
 import { EntityEditor } from "./EntityEditor.tsx";
+import { EntityExtractor } from "./EntityExtractor.tsx";
 import type { Entity, EntityType } from "../../api/client.ts";
 
 const ENTITY_TYPES: EntityType[] = [
@@ -27,6 +28,7 @@ export function EntityDashboard() {
   const [search, setSearch] = useState("");
   const [editingEntity, setEditingEntity] = useState<Entity | null>(null);
   const [creating, setCreating] = useState(false);
+  const [extracting, setExtracting] = useState(false);
 
   const { data: entities, isLoading } = useEntities(
     activeProjectId,
@@ -80,9 +82,18 @@ export function EntityDashboard() {
         </h1>
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setExtracting(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-[--color-accent] text-[--color-accent] rounded-lg text-sm font-medium hover:bg-[--color-accent] hover:text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+            </svg>
+            Extract from Text
+          </button>
+          <button
             onClick={handleDetectAll}
             disabled={detectAll.isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-[--color-bg-accent] text-[--color-text-primary] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+            className="flex items-center gap-2 px-4 py-2 border border-[--color-text-muted] text-[--color-text-secondary] rounded-lg text-sm font-medium hover:border-[--color-text-primary] hover:text-[--color-text-primary] transition-colors disabled:opacity-40"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -253,6 +264,9 @@ export function EntityDashboard() {
           onClose={() => setEditingEntity(null)}
           saving={updateEntity.isPending}
         />
+      )}
+      {extracting && (
+        <EntityExtractor onClose={() => setExtracting(false)} />
       )}
     </div>
   );

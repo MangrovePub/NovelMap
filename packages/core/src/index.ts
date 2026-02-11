@@ -14,6 +14,15 @@ export { SnapshotStore } from "./core/snapshots.js";
 export { searchEntities } from "./core/search.js";
 export { detectEntities, detectEntitiesFullProject, getCrossBookPresence } from "./core/auto-detect.js";
 export type { DetectionResult, DetectionSummary } from "./core/auto-detect.js";
+export { extractEntityCandidates } from "./core/entity-extraction.js";
+export type { ExtractionCandidate, ExtractionResult } from "./core/entity-extraction.js";
+
+// Entity extraction pipeline (gazetteer + classifier + optional LLM)
+export { runPipeline, toExtractionResult, estimateClassificationCost } from "./core/extraction-pipeline.js";
+export type { PipelineResult, PipelineStats, PipelineOptions, ClassifiedEntity, RawCandidate } from "./core/extraction-pipeline.js";
+export type { LLMClassifierConfig } from "./core/llm-classifier.js";
+export { isNoise, lookup as gazetteerLookup } from "./core/gazetteer.js";
+export type { GazetteerHit } from "./core/gazetteer.js";
 
 // Parsers
 export { parseMarkdown } from "./parsers/markdown.js";

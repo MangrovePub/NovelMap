@@ -27,6 +27,8 @@ export interface Manuscript {
   project_id: number;
   title: string;
   file_path: string;
+  cover_url: string | null;
+  series_order: number | null;
   created_at: string;
 }
 
@@ -250,6 +252,27 @@ export interface SnapshotDiff {
   appearances: { added: number; removed: number };
 }
 
+export interface ExtractionCandidate {
+  text: string;
+  suggestedType: EntityType;
+  confidence: "high" | "medium" | "low";
+  score: number;
+  occurrences: number;
+  chapterSpread: number;
+  sampleContexts: string[];
+  relatedCandidates: string[];
+}
+
+export interface ExtractionResult {
+  candidates: ExtractionCandidate[];
+  existingEntities: string[];
+}
+
+export interface ExtractionConfirmResult {
+  created: { id: number; name: string; type: string }[];
+  detection: DetectionSummary;
+}
+
 export interface PluginViewInfo {
   name: string;
   description: string;
@@ -407,4 +430,54 @@ export const api = {
     request<{ deleted: boolean }>(`/projects/${projectId}/snapshots/${snapshotId}`, {
       method: "DELETE",
     }),
+
+  // Covers
+  uploadCover: async (manuscriptId: number, file: File): Promise<Manuscript> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${BASE}/manuscripts/${manuscriptId}/cover`, {
+      method: "PUT",
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`Cover upload failed: ${await res.text()}`);
+    return res.json();
+  },
+
+  setCoverUrl: (manuscriptId: number, url: string) =>
+    request<Manuscript>(`/manuscripts/${manuscriptId}/cover-url`, {
+      method: "PUT",
+      body: JSON.stringify({ url }),
+    }),
+
+  deleteCover: (manuscriptId: number) =>
+    request<void>(`/manuscripts/${manuscriptId}/cover`, { method: "DELETE" }),
+
+  // Manuscript ordering
+  reorderManuscripts: (projectId: number, order: { id: number; series_order: number }[]) =>
+    request<Manuscript[]>(`/projects/${projectId}/manuscripts/reorder`, {
+      method: "PUT",
+      body: JSON.stringify({ order }),
+    }),
+
+  // Entity extraction
+  extractProject: (projectId: number) =>
+    request<ExtractionResult>(`/projects/${projectId}/extract`, { method: "POST", body: "{}" }),
+
+  extractManuscript: (projectId: number, manuscriptId: number) =>
+    request<ExtractionResult>(`/projects/${projectId}/manuscripts/${manuscriptId}/extract`, {
+      method: "POST",
+      body: "{}",
+    }),
+
+  confirmExtraction: (projectId: number, candidates: { text: string; type: EntityType; metadata?: Record<string, unknown> }[]) =>
+    request<ExtractionConfirmResult>(`/projects/${projectId}/extract/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ candidates }),
+    }),
 };
+
+export function resolveCoverUrl(coverUrl: string | null): string | null {
+  if (!coverUrl) return null;
+  if (coverUrl.startsWith("http://") || coverUrl.startsWith("https://")) return coverUrl;
+  return `${BASE}/covers/${coverUrl}`;
+}

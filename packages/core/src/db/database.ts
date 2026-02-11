@@ -19,6 +19,15 @@ export class Database {
   private migrate(): void {
     const schema = readFileSync(join(__dirname, "schema.sql"), "utf-8");
     this.db.exec(schema);
+    this.addColumnIfMissing("manuscript", "cover_url", "TEXT");
+    this.addColumnIfMissing("manuscript", "series_order", "INTEGER");
+  }
+
+  private addColumnIfMissing(table: string, column: string, type: string): void {
+    const cols = this.db.pragma(`table_info(${table})`) as { name: string }[];
+    if (!cols.some((c) => c.name === column)) {
+      this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+    }
   }
 
   close(): void {

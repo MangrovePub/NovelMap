@@ -1,11 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import { readFileSync } from "node:fs";
+import { readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { parseMarkdown, parseDocx, parseEpub, parseScrivener, detectEntities } from "@novelmap/core";
-import { db } from "../db.js";
+import { db, dataDir } from "../db.js";
 
 export function registerManuscriptRoutes(server: FastifyInstance) {
   // List manuscripts for a project
@@ -14,7 +14,7 @@ export function registerManuscriptRoutes(server: FastifyInstance) {
     async (req) => {
       const pid = Number(req.params.pid);
       return db.db
-        .prepare("SELECT * FROM manuscript WHERE project_id = ? ORDER BY created_at DESC")
+        .prepare("SELECT * FROM manuscript WHERE project_id = ? ORDER BY COALESCE(series_order, 999999), created_at ASC")
         .all(pid);
     }
   );
@@ -74,6 +74,85 @@ export function registerManuscriptRoutes(server: FastifyInstance) {
         .get(manuscriptId);
 
       return { manuscript: ms, detection };
+    }
+  );
+
+  // Upload a cover image
+  server.put<{ Params: { id: string } }>(
+    "/api/manuscripts/:id/cover",
+    async (req) => {
+      const id = Number(req.params.id);
+      const data = await req.file();
+      if (!data) throw new Error("No file uploaded");
+
+      const buffer = await data.toBuffer();
+      const ext = data.filename.split(".").pop()?.toLowerCase() ?? "webp";
+      const filename = `m-${id}-${randomUUID()}.${ext}`;
+      const coversDir = join(dataDir, "covers");
+      mkdirSync(coversDir, { recursive: true });
+      writeFileSync(join(coversDir, filename), buffer);
+
+      // Clean up old local cover
+      const existing = db.db.prepare("SELECT cover_url FROM manuscript WHERE id = ?").get(id) as { cover_url: string | null } | undefined;
+      if (existing?.cover_url && !existing.cover_url.startsWith("http")) {
+        try { unlinkSync(join(coversDir, existing.cover_url)); } catch { /* ignore */ }
+      }
+
+      db.db.prepare("UPDATE manuscript SET cover_url = ? WHERE id = ?").run(filename, id);
+      return db.db.prepare("SELECT * FROM manuscript WHERE id = ?").get(id);
+    }
+  );
+
+  // Set an external URL as cover
+  server.put<{ Params: { id: string } }>(
+    "/api/manuscripts/:id/cover-url",
+    async (req) => {
+      const id = Number(req.params.id);
+      const { url } = req.body as { url: string };
+
+      // Clean up old local cover
+      const existing = db.db.prepare("SELECT cover_url FROM manuscript WHERE id = ?").get(id) as { cover_url: string | null } | undefined;
+      if (existing?.cover_url && !existing.cover_url.startsWith("http")) {
+        const coversDir = join(dataDir, "covers");
+        try { unlinkSync(join(coversDir, existing.cover_url)); } catch { /* ignore */ }
+      }
+
+      db.db.prepare("UPDATE manuscript SET cover_url = ? WHERE id = ?").run(url, id);
+      return db.db.prepare("SELECT * FROM manuscript WHERE id = ?").get(id);
+    }
+  );
+
+  // Batch reorder manuscripts
+  server.put<{ Params: { pid: string } }>(
+    "/api/projects/:pid/manuscripts/reorder",
+    async (req) => {
+      const pid = Number(req.params.pid);
+      const { order } = req.body as { order: { id: number; series_order: number }[] };
+      const update = db.db.prepare("UPDATE manuscript SET series_order = ? WHERE id = ? AND project_id = ?");
+      const tx = db.db.transaction(() => {
+        for (const item of order) {
+          update.run(item.series_order, item.id, pid);
+        }
+      });
+      tx();
+      return db.db
+        .prepare("SELECT * FROM manuscript WHERE project_id = ? ORDER BY COALESCE(series_order, 999999), created_at ASC")
+        .all(pid);
+    }
+  );
+
+  // Remove cover
+  server.delete<{ Params: { id: string } }>(
+    "/api/manuscripts/:id/cover",
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      const existing = db.db.prepare("SELECT cover_url FROM manuscript WHERE id = ?").get(id) as { cover_url: string | null } | undefined;
+      if (existing?.cover_url && !existing.cover_url.startsWith("http")) {
+        const coversDir = join(dataDir, "covers");
+        try { unlinkSync(join(coversDir, existing.cover_url)); } catch { /* ignore */ }
+      }
+      db.db.prepare("UPDATE manuscript SET cover_url = NULL WHERE id = ?").run(id);
+      reply.code(204).send();
     }
   );
 }

@@ -4,8 +4,8 @@
  * Licensed under the MIT License
  */
 
-import { existsSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
@@ -22,6 +22,7 @@ import { registerDetectionRoutes } from "./routes/detection.js";
 import { registerAnalyzerRoutes } from "./routes/analyzers.js";
 import { registerPluginRoutes } from "./routes/plugins.js";
 import { registerSnapshotRoutes } from "./routes/snapshots.js";
+import { registerExtractionRoutes } from "./routes/extraction.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -48,6 +49,16 @@ if (existsSync(uiDist)) {
   });
 }
 
+// Serve uploaded cover images
+import { dataDir } from "./db.js";
+const coversDir = join(dataDir, "covers");
+mkdirSync(coversDir, { recursive: true });
+await server.register(fastifyStatic, {
+  root: coversDir,
+  prefix: "/api/covers/",
+  decorateReply: false,
+});
+
 registerProjectRoutes(server);
 registerManuscriptRoutes(server);
 registerChapterRoutes(server);
@@ -59,6 +70,7 @@ registerDetectionRoutes(server);
 registerAnalyzerRoutes(server);
 registerPluginRoutes(server);
 registerSnapshotRoutes(server);
+registerExtractionRoutes(server);
 
 const port = Number(process.env.NOVELMAP_PORT ?? 3001);
 

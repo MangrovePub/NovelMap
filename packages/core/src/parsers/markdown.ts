@@ -24,7 +24,7 @@ export function parseMarkdown(
   let orderIndex = 0;
 
   function flush() {
-    const body = currentLines.join("\n").trim();
+    const body = currentLines.join("\n\n").trim();
     if (currentTitle !== null || body.length > 0) {
       chapters.push({
         title: currentTitle ?? "Untitled",

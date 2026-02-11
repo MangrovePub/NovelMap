@@ -52,6 +52,12 @@ describe("parseMarkdown", () => {
     expect(chapters).toHaveLength(0);
   });
 
+  it("preserves paragraph breaks between paragraphs", () => {
+    const md = "## Chapter 1\n\nFirst paragraph.\n\nSecond paragraph.\n\nThird paragraph.";
+    const chapters = parseMarkdown(md);
+    expect(chapters[0].body).toBe("First paragraph.\n\nSecond paragraph.\n\nThird paragraph.");
+  });
+
   it("supports configurable heading depth", () => {
     const md = `# Part One\n\nIntro\n\n# Part Two\n\nMore text`;
     const chapters = parseMarkdown(md, 1);

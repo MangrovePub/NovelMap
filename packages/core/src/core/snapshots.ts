@@ -78,7 +78,7 @@ export class SnapshotStore {
 
       // Restore manuscripts
       for (const m of data.manuscripts) {
-        this.db.db.prepare("INSERT INTO manuscript (id, project_id, title, file_path, created_at) VALUES (?, ?, ?, ?, ?)").run(m.id, m.project_id, m.title, m.file_path, m.created_at);
+        this.db.db.prepare("INSERT INTO manuscript (id, project_id, title, file_path, cover_url, series_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(m.id, m.project_id, m.title, m.file_path, m.cover_url ?? null, m.series_order ?? null, m.created_at);
       }
 
       // Restore chapters
