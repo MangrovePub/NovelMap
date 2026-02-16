@@ -32,13 +32,16 @@ export function registerManuscriptRoutes(server: FastifyInstance) {
       const ext = filename.split(".").pop()?.toLowerCase() ?? "";
 
       let chapters: { title: string; orderIndex: number; body: string }[];
+      let epubCoverData: { data: Buffer; mimeType: string; extension: string } | null = null;
 
       if (ext === "md") {
         chapters = parseMarkdown(buffer.toString("utf-8"));
       } else if (ext === "docx") {
         chapters = await parseDocx(buffer);
       } else if (ext === "epub") {
-        chapters = await parseEpub(buffer);
+        const result = await parseEpub(buffer);
+        chapters = result.chapters;
+        epubCoverData = result.coverImage;
       } else if (ext === "scriv" || ext === "scrivx") {
         // Save to temp dir and parse
         const tempDir = join(tmpdir(), `novelmap-${randomUUID()}`);
@@ -64,6 +67,15 @@ export function registerManuscriptRoutes(server: FastifyInstance) {
       );
       for (const ch of chapters) {
         insertChapter.run(manuscriptId, ch.title, ch.orderIndex, ch.body);
+      }
+
+      // Auto-save cover image if extracted from EPUB
+      if (epubCoverData) {
+        const coverFilename = `m-${manuscriptId}-${randomUUID()}.${epubCoverData.extension}`;
+        const coversDir = join(dataDir, "covers");
+        mkdirSync(coversDir, { recursive: true });
+        writeFileSync(join(coversDir, coverFilename), epubCoverData.data);
+        db.db.prepare("UPDATE manuscript SET cover_url = ? WHERE id = ?").run(coverFilename, manuscriptId);
       }
 
       // Auto-detect entity appearances in the newly imported manuscript

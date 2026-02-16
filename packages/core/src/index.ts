@@ -29,6 +29,7 @@ export { parseMarkdown } from "./parsers/markdown.js";
 export { parseDocx } from "./parsers/docx.js";
 export { parseScrivener } from "./parsers/scrivener.js";
 export { parseEpub } from "./parsers/epub.js";
+export type { EpubCoverImage, EpubParseResult } from "./parsers/epub.js";
 
 // Views
 export { buildDossier, buildFieldGuide, renderFieldGuideHtml } from "./views/fieldguide.js";

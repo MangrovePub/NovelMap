@@ -147,6 +147,32 @@ const COMMON_WORDS = new Set([
   "september", "october", "november", "december",
   // Common sentence starters
   "once", "since", "until", "during",
+  // Additional noise from Dark Recipe dogfooding
+  "beach", "bass", "outbreak", "discovery", "recipe", "deco", "asset",
+  "perimeter", "whiskers", "financial", "pressure", "introduction",
+  "awareness", "response", "teaching", "wide", "nationwide",
+  "systematic", "accelerated", "contaminated", "quarantine", "protocol",
+  "exposure", "symptom", "symptoms", "infection", "infected", "pathogen",
+  "specimen", "outbreak", "pandemic", "epidemic", "vaccine", "antidote",
+  "toxin", "lethal", "containment", "decontamination", "bioweapon",
+  "surveillance", "classified", "encrypted", "decoded", "intercepted",
+  "biological", "chemical", "pharmaceutical", "laboratory", "diagnostic",
+  "art", "attorney", "harbor", "haven", "manor", "grove", "terrace",
+  "corridor", "gallery", "passage", "chamber", "vault", "cellar",
+  "summit", "rally", "siege", "retreat", "advance", "assault",
+  "supplement", "ingredient", "compound", "formula", "dosage",
+]);
+
+// ─── Compound-noun noise (multi-word false positives) ─────────
+// Capitalized phrases that look like entity names but aren't.
+const COMPOUND_NOISE = new Set([
+  "Art Deco", "Attorney General", "Dark Recipe",
+  "Supreme Court", "White House", "Secret Service", "National Guard",
+  "Coast Guard", "Air Force", "Special Forces", "Joint Chiefs",
+  "Oval Office", "Rose Garden", "Press Secretary", "Chief of Staff",
+  "Grand Jury", "District Attorney", "State Department", "War Room",
+  "Control Room", "Operating Room", "Emergency Room", "Situation Room",
+  "Ground Zero", "First Lady", "Vice President",
 ]);
 
 // ─── Known locations ──────────────────────────────────────────
@@ -196,6 +222,7 @@ const CAPS_NOT_ACRONYMS = new Set([
   "COME", "LOOK", "HERE", "THERE", "WHAT", "WHERE", "WHEN", "FIRE",
   "DOWN", "BACK", "OPEN", "SHUT", "HOLD", "STAY", "KILL", "DEAD",
   "LOVE", "HOME", "GONE", "DAMN", "JUST", "YEAH", "OKAY", "CALL",
+  "TATE", "MAYA", "CHEN", "LENA", "DARK", "BASS", "REEF",
 ]);
 
 // ─── Context signals ──────────────────────────────────────────
@@ -230,6 +257,29 @@ interface RawCandidate {
   chapters: Set<number>;
 }
 
+// ─── Front matter titles to skip ──────────────────────────────
+// Chapters whose titles match these patterns contain metadata
+// (author name, copyright, etc.) — not story text.
+const FRONT_MATTER_PATTERNS = [
+  /^title\s*page$/i, /^copyright/i, /^dedication/i,
+  /^about\s+the\s+author/i, /^also\s+by/i, /^other\s+books/i,
+  /^acknowledgment/i, /^acknowledgement/i,
+  /^table\s+of\s+contents/i, /^contents$/i,
+  /^foreword/i, /^preface/i, /^introduction$/i,
+  /^front\s*matter/i, /^back\s*matter/i,
+  /^blurb/i, /^endorsements?/i, /^praise\s+for/i,
+  /^author'?s?\s+note/i, /^note\s+from/i,
+  /^cover$/i, /^half.?title/i,
+  /^colophon/i, /^imprint/i, /^legal/i,
+  /^epigraph/i, /^coming\s+next/i, /^notes\s+on/i,
+  /^epilogue$/i, /^appendix/i,
+];
+
+function isFrontMatter(title: string): boolean {
+  const t = title.trim();
+  return FRONT_MATTER_PATTERNS.some((p) => p.test(t));
+}
+
 // ─── Core algorithm ───────────────────────────────────────────
 
 export function extractEntityCandidates(
@@ -237,19 +287,22 @@ export function extractEntityCandidates(
   projectId: number,
   manuscriptId?: number
 ): ExtractionResult {
-  // Get chapters
-  let chapters: { id: number; body: string }[];
+  // Get chapters (include title so we can skip front matter)
+  let allChapters: { id: number; title: string; body: string }[];
   if (manuscriptId) {
-    chapters = db.db
-      .prepare("SELECT id, body FROM chapter WHERE manuscript_id = ? ORDER BY order_index")
-      .all(manuscriptId) as { id: number; body: string }[];
+    allChapters = db.db
+      .prepare("SELECT id, title, body FROM chapter WHERE manuscript_id = ? ORDER BY order_index")
+      .all(manuscriptId) as { id: number; title: string; body: string }[];
   } else {
-    chapters = db.db
+    allChapters = db.db
       .prepare(
-        "SELECT c.id, c.body FROM chapter c JOIN manuscript m ON c.manuscript_id = m.id WHERE m.project_id = ? ORDER BY m.id, c.order_index"
+        "SELECT c.id, c.title, c.body FROM chapter c JOIN manuscript m ON c.manuscript_id = m.id WHERE m.project_id = ? ORDER BY m.id, c.order_index"
       )
-      .all(projectId) as { id: number; body: string }[];
+      .all(projectId) as { id: number; title: string; body: string }[];
   }
+
+  // Filter out front matter / back matter chapters
+  const chapters = allChapters.filter((c) => !isFrontMatter(c.title));
 
   if (chapters.length === 0) {
     return { candidates: [], existingEntities: [] };
@@ -279,6 +332,9 @@ export function extractEntityCandidates(
   for (const [key, raw] of rawCandidates) {
     // Skip common words
     if (COMMON_WORDS.has(key.toLowerCase())) continue;
+
+    // Skip compound-noun noise (e.g. "Art Deco", "Attorney General")
+    if (COMPOUND_NOISE.has(raw.text)) continue;
 
     // Skip street-address phrases (e.g. "Saginaw Street") — too granular
     const rawWords = raw.text.split(/\s+/);
@@ -317,7 +373,7 @@ export function extractEntityCandidates(
     const score = frequencyScore + spreadScore + nonStartScore + shapeScore;
 
     // Minimum score threshold
-    const minScore = raw.text.length <= 2 ? 35 : wordCount >= 2 ? 25 : 30;
+    const minScore = raw.text.length <= 2 ? 40 : wordCount >= 2 ? 25 : 35;
     if (score < minScore) continue;
 
     // Phase 3: Classify type
@@ -415,7 +471,12 @@ function scanText(
   while ((match = acronymRegex.exec(text)) !== null) {
     const acr = match[1];
     // Skip common abbreviations that aren't organizations
-    if (["OK", "AM", "PM", "TV", "US", "UK", "EU", "UN", "ID", "IT", "OR", "AN", "AT", "AS", "IF", "IS", "IN", "ON", "SO", "TO", "UP", "NO", "OF", "IV", "IP", "AI", "AD", "DC", "AC", "DO", "GO", "ER", "DR", "MR", "MS", "VS", "RE", "EM", "AG"].includes(acr)) continue;
+    if (["OK", "AM", "PM", "TV", "US", "UK", "EU", "UN", "ID", "IT", "OR", "AN", "AT", "AS", "IF", "IS", "IN", "ON", "SO", "TO", "UP", "NO", "OF", "IV", "IP", "AI", "AD", "DC", "AC", "DO", "GO", "ER", "DR", "MR", "MS", "VS", "RE", "EM", "AG",
+      "API", "ARM", "URL", "SQL", "USB", "GPS", "DNA", "RNA", "CPU", "RAM", "ROM",
+      "PDF", "LED", "LCD", "HIV", "PPE", "ICU", "PCR", "MRI", "BSL", "ART",
+      "VPN", "IOT", "APP", "SDK", "CSS", "PHP", "XML", "SSH", "FTP", "HTTP",
+      "RPG", "NPC", "DLC", "RPM", "MSG", "OTC", "PTO", "RFP", "ROI",
+    ].includes(acr)) continue;
     // Skip all-caps words that are just emphasized text, not real acronyms
     // (e.g., "HELLO", "KNOX" in dialogue emphasis). Real acronyms are
     // typically not common English words when lowercased.

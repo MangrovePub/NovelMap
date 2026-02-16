@@ -17,6 +17,12 @@ export function registerExtractionRoutes(server: FastifyInstance) {
     async (req) => {
       const pid = Number(req.params.pid);
 
+      // Load ignored names for this project
+      const ignoredRows = db.db
+        .prepare("SELECT name FROM ignored_entity WHERE project_id = ?")
+        .all(pid) as { name: string }[];
+      const ignoredNames = new Set(ignoredRows.map((r) => r.name.toLowerCase()));
+
       // Run existing scanner
       const scannerResult = extractEntityCandidates(db, pid);
 
@@ -30,8 +36,13 @@ export function registerExtractionRoutes(server: FastifyInstance) {
       // Run through enhanced pipeline (no LLM — sync classification)
       const pipelineResult = await runPipeline(scannerResult, chapterCount);
 
-      // Return in existing API format for UI compatibility
-      return toExtractionResult(pipelineResult, scannerResult.existingEntities);
+      // Build result and filter out ignored names
+      const result = toExtractionResult(pipelineResult, scannerResult.existingEntities);
+      result.candidates = result.candidates.filter(
+        (c) => !ignoredNames.has(c.text.toLowerCase())
+      );
+
+      return result;
     }
   );
 
@@ -107,38 +118,77 @@ export function registerExtractionRoutes(server: FastifyInstance) {
   );
 
   // Confirm extraction: batch-create entities from candidates, then run detection
+  // Candidates with type "ignore" are saved to the ignore list instead
   server.post<{ Params: { pid: string } }>(
     "/api/projects/:pid/extract/confirm",
     async (req) => {
       const pid = Number(req.params.pid);
-      const { candidates } = req.body as {
-        candidates: { text: string; type: string; metadata?: Record<string, unknown> }[];
+      const body = req.body as {
+        candidates?: { text: string; type: string; metadata?: Record<string, unknown> }[];
       };
+      console.log(`[DEBUG] Confirm extraction body keys: ${Object.keys(body || {})}`);
+      if (body?.candidates) {
+        console.log(`[DEBUG] Candidates type: ${typeof body.candidates}, isArray: ${Array.isArray(body.candidates)}, length: ${body.candidates.length}`);
+      } else {
+        console.log(`[DEBUG] Candidates is missing or undefined`);
+      }
+
+      const candidates = body.candidates;
+
+      if (!candidates || !Array.isArray(candidates)) {
+        throw new Error(
+          `Invalid request body. Expected 'candidates' array. Received keys: ${Object.keys(body || {})}`
+        );
+      }
 
       const insertEntity = db.db.prepare(
-        "INSERT INTO entity (project_id, type, name, metadata) VALUES (?, ?, ?, ?)"
+        "INSERT OR IGNORE INTO entity (project_id, type, name, metadata) VALUES (?, ?, ?, ?)"
+      );
+
+      const insertIgnored = db.db.prepare(
+        "INSERT OR IGNORE INTO ignored_entity (project_id, name) VALUES (?, ?)"
       );
 
       const created: { id: number; name: string; type: string }[] = [];
+      const ignored: string[] = [];
       const tx = db.db.transaction(() => {
+        let index = 0;
         for (const c of candidates) {
-          // Skip if entity with this name already exists
-          const existing = db.db
-            .prepare("SELECT id FROM entity WHERE project_id = ? AND name = ?")
-            .get(pid, c.text) as { id: number } | undefined;
-          if (existing) continue;
+          try {
+            const type = String(c.type).trim().toLowerCase();
+            console.log(`[DEBUG] Processing candidate ${index}: "${c.text}", type: "${c.type}" (normalized: "${type}")`);
 
-          const result = insertEntity.run(
-            pid,
-            c.type,
-            c.text,
-            JSON.stringify(c.metadata ?? {})
-          );
-          created.push({
-            id: Number(result.lastInsertRowid),
-            name: c.text,
-            type: c.type,
-          });
+            // Handle "ignore" type: persist to ignore list
+            if (type === "ignore") {
+              insertIgnored.run(pid, c.text);
+              ignored.push(c.text);
+              continue;
+            }
+
+            // Validate type against allowed DB values
+            const ALLOWED_TYPES = new Set(['character', 'location', 'organization', 'artifact', 'concept', 'event']);
+            if (!ALLOWED_TYPES.has(type)) {
+              console.warn(`[WARN] Skipping invalid entity type: "${type}" for candidate "${c.text}" (Original: "${c.type}")`);
+              continue;
+            }
+
+            console.log(`[DEBUG] Inserting entity: "${c.text}", type: "${type}"`);
+            const result = insertEntity.run(
+              pid,
+              type, // Use normalized type
+              c.text,
+              JSON.stringify(c.metadata ?? {})
+            );
+            created.push({
+              id: Number(result.lastInsertRowid),
+              name: c.text,
+              type: c.type, // Store original type
+            });
+            index++;
+          } catch (err: any) {
+            console.error(`[ERROR] Failed to insert candidate ${index}: ${JSON.stringify(c)}`, err);
+            throw new Error(`Failed to insert candidate "${c.text}" (type: ${c.type}): ${err.message}`);
+          }
         }
       });
       tx();
@@ -146,7 +196,44 @@ export function registerExtractionRoutes(server: FastifyInstance) {
       // Run full detection to create appearances for the new entities
       const detection = detectEntitiesFullProject(db, pid);
 
-      return { created, detection };
+      return { created, ignored, detection };
+    }
+  );
+
+  // ── Ignored entities ──────────────────────────────────────────
+
+  // List ignored entity names for a project
+  server.get<{ Params: { pid: string } }>(
+    "/api/projects/:pid/ignored-entities",
+    async (req) => {
+      const pid = Number(req.params.pid);
+      return db.db
+        .prepare("SELECT id, name, created_at FROM ignored_entity WHERE project_id = ? ORDER BY name")
+        .all(pid);
+    }
+  );
+
+  // Add a name to the ignore list
+  server.post<{ Params: { pid: string }; Body: { name: string } }>(
+    "/api/projects/:pid/ignored-entities",
+    async (req) => {
+      const pid = Number(req.params.pid);
+      const { name } = req.body;
+      db.db
+        .prepare("INSERT OR IGNORE INTO ignored_entity (project_id, name) VALUES (?, ?)")
+        .run(pid, name);
+      return { ok: true };
+    }
+  );
+
+  // Remove a name from the ignore list
+  server.delete<{ Params: { id: string } }>(
+    "/api/ignored-entities/:id",
+    async (req, reply) => {
+      db.db
+        .prepare("DELETE FROM ignored_entity WHERE id = ?")
+        .run(Number(req.params.id));
+      return reply.code(204).send();
     }
   );
 }

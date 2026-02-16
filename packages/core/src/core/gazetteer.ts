@@ -146,6 +146,20 @@ const NOISE_WORDS = new Set([
   "commercial", "professional", "operational", "residential",
   "medical", "political", "financial", "economic", "strategic",
   "tactical", "technical", "structural", "cultural", "physical",
+  // Additional noise from Dark Recipe dogfooding
+  "beach", "bass", "outbreak", "discovery", "recipe", "deco", "asset",
+  "perimeter", "whiskers", "pressure", "introduction",
+  "awareness", "response", "teaching", "wide", "nationwide",
+  "systematic", "accelerated", "contaminated", "quarantine",
+  "exposure", "symptom", "symptoms", "infection", "infected", "pathogen",
+  "specimen", "pandemic", "epidemic", "vaccine", "antidote",
+  "toxin", "lethal", "containment", "decontamination", "bioweapon",
+  "classified", "encrypted", "decoded", "intercepted",
+  "biological", "chemical", "pharmaceutical", "laboratory", "diagnostic",
+  "art", "attorney", "harbor", "haven", "manor", "grove", "terrace",
+  "corridor", "gallery", "passage", "chamber", "vault", "cellar",
+  "summit", "rally", "siege", "retreat", "advance", "assault",
+  "supplement", "ingredient", "compound", "formula", "dosage",
 ]);
 
 // ─── Known locations ─────────────────────────────────────────
@@ -317,6 +331,7 @@ const CAPS_NOT_ACRONYMS = new Set([
   "LOVE", "HOME", "GONE", "DAMN", "JUST", "YEAH", "OKAY", "CALL",
   "PLEASE", "SORRY", "NEVER", "LEAVE", "TAKE", "GIVE", "MAKE",
   "TELL", "KNOW", "THINK", "WANT", "NEED", "FEEL",
+  "KNOX", "RAMSEY", "TATE", "MAYA", "CHEN", "LENA", "DARK", "BASS", "REEF",
 ]);
 
 // ─── Character title words ──────────────────────────────────

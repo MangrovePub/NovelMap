@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS chapter (
   manuscript_id INTEGER NOT NULL REFERENCES manuscript(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   order_index INTEGER NOT NULL,
-  body TEXT NOT NULL DEFAULT ''
+  body TEXT NOT NULL DEFAULT '',
+  summary TEXT
 );
 
 CREATE TABLE IF NOT EXISTS entity (
@@ -48,6 +49,14 @@ CREATE TABLE IF NOT EXISTS relationship (
   target_entity_id INTEGER NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
   metadata TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS ignored_entity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(project_id, name)
 );
 
 -- Indexes

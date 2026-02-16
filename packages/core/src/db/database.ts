@@ -21,6 +21,7 @@ export class Database {
     this.db.exec(schema);
     this.addColumnIfMissing("manuscript", "cover_url", "TEXT");
     this.addColumnIfMissing("manuscript", "series_order", "INTEGER");
+    this.addColumnIfMissing("chapter", "summary", "TEXT");
   }
 
   private addColumnIfMissing(table: string, column: string, type: string): void {

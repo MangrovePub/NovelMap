@@ -85,7 +85,7 @@ export function useConfirmExtraction() {
   return useMutation({
     mutationFn: ({ projectId, candidates }: {
       projectId: number;
-      candidates: { text: string; type: EntityType; metadata?: Record<string, unknown> }[];
+      candidates: { text: string; type: EntityType | "ignore"; metadata?: Record<string, unknown> }[];
     }) => api.confirmExtraction(projectId, candidates),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["entities", vars.projectId] });

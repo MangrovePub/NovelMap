@@ -480,7 +480,7 @@ export const api = {
       body: "{}",
     }),
 
-  confirmExtraction: (projectId: number, candidates: { text: string; type: EntityType; metadata?: Record<string, unknown> }[]) =>
+  confirmExtraction: (projectId: number, candidates: { text: string; type: EntityType | "ignore"; metadata?: Record<string, unknown> }[]) =>
     request<ExtractionConfirmResult>(`/projects/${projectId}/extract/confirm`, {
       method: "POST",
       body: JSON.stringify({ candidates }),

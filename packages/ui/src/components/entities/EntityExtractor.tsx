@@ -8,7 +8,7 @@ type Step = "scanning" | "review" | "done";
 
 interface SelectedCandidate extends ExtractionCandidate {
   selected: boolean;
-  overrideType?: EntityType;
+  overrideType?: EntityType | "ignore";
 }
 
 export function EntityExtractor({ onClose }: { onClose: () => void }) {
@@ -39,7 +39,7 @@ export function EntityExtractor({ onClose }: { onClose: () => void }) {
         onError: () => setStep("review"),
       }
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggleCandidate(idx: number) {
@@ -56,21 +56,27 @@ export function EntityExtractor({ onClose }: { onClose: () => void }) {
 
   function handleConfirm() {
     if (!activeProjectId) return;
-    const selected = candidates
-      .filter((c) => c.selected)
+    // Send both selected entities AND ignored candidates
+    const toSend = candidates
+      .filter((c) => {
+        const type = c.overrideType ?? c.suggestedType;
+        return c.selected || type === "ignore";
+      })
       .map((c) => ({
         text: c.text,
         type: c.overrideType ?? c.suggestedType,
       }));
 
     confirm.mutate(
-      { projectId: activeProjectId, candidates: selected },
+      { projectId: activeProjectId, candidates: toSend },
       {
         onSuccess: (result) => {
           setCreatedCount(result.created.length);
+          const ignoredCount = result.ignored?.length ?? 0;
           const d = result.detection;
           setDetectionSummary(
             `${d.totalMatches} text matches found, ${d.newAppearances} appearances created.` +
+            (ignoredCount > 0 ? ` ${ignoredCount} name${ignoredCount === 1 ? "" : "s"} added to ignore list.` : "") +
             (d.crossBookEntities.length > 0
               ? ` ${d.crossBookEntities.length} entities appear across multiple books!`
               : "")
@@ -81,10 +87,11 @@ export function EntityExtractor({ onClose }: { onClose: () => void }) {
     );
   }
 
-  const selectedCount = candidates.filter((c) => c.selected).length;
+  const selectedCount = candidates.filter((c) => c.selected && (c.overrideType ?? c.suggestedType) !== "ignore").length;
+  const ignoredCount = candidates.filter((c) => (c.overrideType ?? c.suggestedType) === "ignore").length;
 
   // Group candidates by type
-  const grouped = new Map<EntityType, SelectedCandidate[]>();
+  const grouped = new Map<EntityType | "ignore", SelectedCandidate[]>();
   for (const c of candidates) {
     const type = c.overrideType ?? c.suggestedType;
     const list = grouped.get(type) ?? [];
@@ -92,7 +99,7 @@ export function EntityExtractor({ onClose }: { onClose: () => void }) {
     grouped.set(type, list);
   }
 
-  const typeOrder: EntityType[] = ["character", "location", "organization", "artifact", "concept", "event"];
+  const typeOrder: (EntityType | "ignore")[] = ["character", "location", "organization", "artifact", "concept", "event", "ignore"];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -205,7 +212,7 @@ export function EntityExtractor({ onClose }: { onClose: () => void }) {
               >
                 {confirm.isPending
                   ? "Creating..."
-                  : `Create ${selectedCount} Entit${selectedCount === 1 ? "y" : "ies"}`}
+                  : `Create ${selectedCount} Entit${selectedCount === 1 ? "y" : "ies"}${ignoredCount > 0 ? ` (ignore ${ignoredCount})` : ""}`}
               </button>
             </>
           )}
@@ -225,8 +232,8 @@ export function EntityExtractor({ onClose }: { onClose: () => void }) {
 
 // ─── Candidate Row ────────────────────────────────────────────
 
-const ENTITY_TYPES: EntityType[] = [
-  "character", "location", "organization", "artifact", "concept", "event",
+const ENTITY_TYPES: (EntityType | "ignore")[] = [
+  "character", "location", "organization", "artifact", "concept", "event", "ignore",
 ];
 
 function CandidateRow({
@@ -248,21 +255,21 @@ function CandidateRow({
 
   return (
     <div
-      className={`rounded-lg border transition-colors ${
-        candidate.selected
+      className={`rounded-lg border transition-colors ${(candidate.overrideType ?? candidate.suggestedType) === "ignore"
+        ? "border-red-500/30 bg-red-500/5 opacity-60"
+        : candidate.selected
           ? "border-[--color-accent]/30 bg-[--color-bg-body]"
           : "border-transparent bg-[--color-bg-body]/50 opacity-50"
-      }`}
+        }`}
     >
       <div className="flex items-center gap-3 px-3 py-2">
         {/* Checkbox */}
         <button onClick={onToggle} className="shrink-0">
           <div
-            className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
-              candidate.selected
-                ? "bg-[--color-accent] border-[--color-accent]"
-                : "border-[--color-text-muted]"
-            }`}
+            className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${candidate.selected
+              ? "bg-[--color-accent] border-[--color-accent]"
+              : "border-[--color-text-muted]"
+              }`}
           >
             {candidate.selected && (
               <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
