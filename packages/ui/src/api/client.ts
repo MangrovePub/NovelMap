@@ -13,6 +13,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   });
+  if (res.status === 401) {
+    // Session expired or token mismatch — force re-login
+    localStorage.removeItem("studio-token");
+    window.location.reload();
+    throw new Error("Session expired");
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API error ${res.status}: ${text}`);

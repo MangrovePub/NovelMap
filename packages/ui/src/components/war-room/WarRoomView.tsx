@@ -150,8 +150,8 @@ export function WarRoomView() {
     return (
       <div className="flex items-center justify-center h-64 text-[--color-text-muted]">
         <div className="text-center">
-          <p className="text-[--color-accent] font-serif text-lg mb-2">Connection failed</p>
-          <p className="text-sm">Could not reach mangrove_workbench. Check DB credentials.</p>
+          <p className="text-[--color-accent] font-serif text-lg mb-2">Failed to load</p>
+          <p className="text-sm">Could not reach the database. Check server logs.</p>
         </div>
       </div>
     );
