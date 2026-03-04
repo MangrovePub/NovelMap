@@ -50,5 +50,6 @@ jobs:
             MANGROVE_DB_NAME=mangrove_workbench
             MANGROVE_DB_USER=n8nadmin
             MANGROVE_DB_PASSWORD=secretref:mangrove-db-password
+            STUDIO_TOKEN=secretref:studio-token
             NOVELMAP_PORT=3001
             NODE_ENV=production

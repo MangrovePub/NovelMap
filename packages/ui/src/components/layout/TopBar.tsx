@@ -120,6 +120,17 @@ export function TopBar() {
         />
       )}
 
+      {/* Logout */}
+      <button
+        onClick={() => { localStorage.removeItem("studio-token"); window.location.reload(); }}
+        title="Sign out"
+        className="flex items-center justify-center w-8 h-8 rounded-lg bg-[--color-bg-body] border border-[--color-bg-accent] text-[--color-text-muted] hover:text-[--color-text-secondary] hover:border-[--color-text-muted] transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
+        </svg>
+      </button>
+
       {exportOpen && activeProjectId && (
         <ExportDialog
           projectId={activeProjectId}

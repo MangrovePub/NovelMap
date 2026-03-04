@@ -4,11 +4,12 @@
  * Licensed under the MIT License
  */
 
-import { StrictMode } from "react";
+import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router";
 import { App } from "./App.tsx";
+import { LoginPage } from "./components/auth/LoginPage.tsx";
 import "./styles/globals.css";
 
 const queryClient = new QueryClient({
@@ -20,12 +21,20 @@ const queryClient = new QueryClient({
   },
 });
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
+function Root() {
+  const [authed, setAuthed] = useState(() => !!localStorage.getItem("studio-token"));
+  if (!authed) return <LoginPage onLogin={() => setAuthed(true)} />;
+  return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <App />
       </BrowserRouter>
     </QueryClientProvider>
+  );
+}
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <Root />
   </StrictMode>
 );

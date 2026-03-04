@@ -1,10 +1,15 @@
 const BASE = "/api";
 
+function getToken(): string {
+  return localStorage.getItem("studio-token") ?? "";
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      "x-studio-token": getToken(),
       ...init?.headers,
     },
   });

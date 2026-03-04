@@ -50,6 +50,27 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const server = Fastify({ logger: true });
 
+// ── Simple token auth ─────────────────────────────────────────────────────────
+// All /api/* routes require header: x-studio-token: <STUDIO_TOKEN env var>
+// The UI login page verifies via GET /api/auth/ping
+const STUDIO_TOKEN = process.env.STUDIO_TOKEN;
+if (!STUDIO_TOKEN) {
+  console.warn("⚠️  STUDIO_TOKEN not set — API is unprotected");
+}
+
+server.addHook("preHandler", async (req, reply) => {
+  if (!STUDIO_TOKEN) return; // dev mode: no auth required
+  if (!req.url.startsWith("/api/")) return; // static files pass through
+  if (req.url === "/api/auth/ping") return; // login check endpoint is public
+  const token = req.headers["x-studio-token"];
+  if (token !== STUDIO_TOKEN) {
+    reply.code(401).send({ error: "Unauthorized" });
+  }
+});
+
+// Login check — returns 200 if token is valid (called by the login page)
+server.get("/api/auth/ping", async () => ({ ok: true }));
+
 await server.register(cors, { origin: true });
 await server.register(multipart, { limits: { fileSize: 100_000_000 } });
 
