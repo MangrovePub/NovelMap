@@ -45,8 +45,8 @@ export function registerStudioDevEditRoutes(server: FastifyInstance) {
           `SELECT series_key, book_number FROM public.books WHERE book_id = $1`,
           [bookId]
         );
-        seriesKey = book?.series_key ?? null;
-        bookNumber = book?.book_number ?? null;
+        seriesKey = (book?.series_key as string) ?? null;
+        bookNumber = (book?.book_number as number) ?? null;
       }
 
       const conditions: string[] = [];
@@ -61,16 +61,10 @@ export function registerStudioDevEditRoutes(server: FastifyInstance) {
         FROM public.dev_edit_cache
         ${where}
         ORDER BY chunk_index
-      `, params);
+      `, params) as { chunk_index: number; chapter: string; total_issue_count: number; ai_risk_count: number; payload: unknown }[];
 
       // Parse payload and aggregate per chunk
-      const chunks = rows.map((row: {
-        chunk_index: number;
-        chapter: string;
-        total_issue_count: number;
-        ai_risk_count: number;
-        payload: unknown;
-      }) => {
+      const chunks = rows.map((row) => {
         const items: { analysis?: Analysis }[] = Array.isArray(row.payload)
           ? row.payload as { analysis?: Analysis }[]
           : [row.payload as { analysis?: Analysis }];
@@ -119,8 +113,8 @@ export function registerStudioDevEditRoutes(server: FastifyInstance) {
         `SELECT series_key, book_number FROM public.books WHERE book_id = $1`,
         [bookId]
       );
-      seriesKey = book?.series_key ?? null;
-      bookNumber = book?.book_number ?? null;
+      seriesKey = (book?.series_key as string) ?? null;
+      bookNumber = (book?.book_number as number) ?? null;
     }
 
     const conditions: string[] = [`chunk_index = $1`];
