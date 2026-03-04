@@ -19,6 +19,8 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm install --include=dev
+      - name: Build (core)
+        run: npm run build --workspace=packages/core
       - name: Lint (core)
         run: npm run lint --workspace=packages/core
       - name: Lint (server)
