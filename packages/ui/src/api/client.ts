@@ -703,6 +703,12 @@ export const studio = {
   getScene: (sceneId: string) =>
     request<StudioScene>(`/studio/scenes/${sceneId}`),
 
+  updateScene: (sceneId: string, data: { scene_text?: string; subheader?: string; location?: string; time_of_day?: string }) =>
+    request<{ scene_id: string; word_count: number }>(`/studio/scenes/${sceneId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
   listCharacters: (params: { universeKey?: string; bookId?: string } = {}) => {
     const qs = new URLSearchParams();
     if (params.universeKey) qs.set("universeKey", params.universeKey);

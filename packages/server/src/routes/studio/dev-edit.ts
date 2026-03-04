@@ -190,15 +190,29 @@ export async function registerStudioDevEditRoutes(server: FastifyInstance) {
     ) as { chapter: string }[];
     if (!chunk) return { chapter: null, scenes: [] };
 
-    const scenes = await query(`
+    // Try matching by chapter title first, then scene subheader (for early chunks)
+    let scenes = await query(`
       SELECT s.scene_id, s.seq_in_chapter, s.subheader,
              s.word_count, s.scene_text, s.location, s.time_of_day
       FROM public.scenes s
       JOIN public.chapters c ON s.chapter_id = c.chapter_id
       JOIN public.books    b ON s.book_id    = b.book_id
       WHERE b.series_key = $1 AND b.book_number = $2 AND c.title ILIKE $3
-      ORDER BY s.seq_in_chapter
+      ORDER BY c.chapter_index, s.seq_in_chapter
     `, [seriesKey, bookNumber, chunk.chapter]);
+
+    // Fallback: match on scene subheader (early chunks are per-scene not per-chapter)
+    if (!scenes.length) {
+      scenes = await query(`
+        SELECT s.scene_id, s.seq_in_chapter, s.subheader,
+               s.word_count, s.scene_text, s.location, s.time_of_day
+        FROM public.scenes s
+        JOIN public.chapters c ON s.chapter_id = c.chapter_id
+        JOIN public.books    b ON s.book_id    = b.book_id
+        WHERE b.series_key = $1 AND b.book_number = $2 AND s.subheader ILIKE $3
+        ORDER BY c.chapter_index, s.seq_in_chapter
+      `, [seriesKey, bookNumber, chunk.chapter]);
+    }
 
     return { chapter: chunk.chapter, scenes };
   });

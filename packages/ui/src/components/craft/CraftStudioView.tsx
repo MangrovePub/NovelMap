@@ -39,6 +39,20 @@ interface LocalResolution {
   chosenRewrite: string | null;
 }
 
+// ── Pandoc artifact cleaner ───────────────────────────────────────────────────
+// Belt-and-suspenders: DB was already cleaned but new data might have these
+
+function cleanText(text: string): string {
+  return text
+    .replace(/\\--/g, "\u2014")     // \-- → em dash
+    .replace(/\\'/g, "\u2019")      // \' → right single quote
+    .replace(/\\"/g, "\u201D")      // \" → right double quote
+    .replace(/\\\*/g, "*")
+    .replace(/\\_/g, "_")
+    .replace(/\{[^}]*\}/g, "")      // pandoc span attrs {.underline} etc
+    .replace(/\\(.)/g, "$1");       // any remaining \X → X
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function resKey(cat: string, idx: number): ResolutionKey {
@@ -80,50 +94,71 @@ function renderWithHighlight(text: string, anchor: string | undefined): React.Re
 function SceneTextPanel({
   scenes,
   anchor,
+  editMode,
+  draftTexts,
+  onTextChange,
 }: {
   scenes: ChunkScene[];
   anchor: string | undefined;
+  editMode: boolean;
+  draftTexts: Record<string, string>;
+  onTextChange: (sceneId: string, text: string) => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    if (!anchor) return;
+    if (!anchor || editMode) return;
     const el = document.getElementById("craft-anchor");
-    if (el) {
-      setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
-    }
-  }, [anchor]);
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+  }, [anchor, editMode]);
 
   if (!scenes.length) {
     return (
       <p className="text-sm text-[--color-text-muted] italic text-center py-12">
         No scene text found for this chapter.
+        <br />
+        <span className="text-[11px]">This section may be embedded within another scene.</span>
       </p>
     );
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-6">
-      {scenes.map((scene, si) => (
-        <div key={scene.scene_id}>
-          {(scene.subheader || scenes.length > 1) && (
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-px flex-1 bg-[--color-bg-accent]" />
-              <span className="text-[10px] uppercase tracking-widest text-[--color-text-muted]">
-                {scene.subheader ?? `Scene ${si + 1}`}
-              </span>
-              <div className="h-px flex-1 bg-[--color-bg-accent]" />
-            </div>
-          )}
-          <div className="text-sm leading-[1.85] text-[--color-text-secondary] font-serif">
-            {scene.scene_text.split(/\n\n+/).map((para, pi) => (
-              <p key={pi} className="mb-4">
-                {renderWithHighlight(para, anchor)}
-              </p>
-            ))}
+    <div className="flex flex-col gap-6">
+      {scenes.map((scene, si) => {
+        const text = cleanText(draftTexts[scene.scene_id] ?? scene.scene_text);
+        const isDirty = scene.scene_id in draftTexts;
+
+        return (
+          <div key={scene.scene_id}>
+            {(scene.subheader || scenes.length > 1) && (
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-px flex-1 bg-[--color-bg-accent]" />
+                <span className={`text-[10px] uppercase tracking-widest ${isDirty ? "text-amber-400" : "text-[--color-text-muted]"}`}>
+                  {scene.subheader ?? `Scene ${si + 1}`}
+                  {isDirty && " · edited"}
+                </span>
+                <div className="h-px flex-1 bg-[--color-bg-accent]" />
+              </div>
+            )}
+
+            {editMode ? (
+              <textarea
+                value={draftTexts[scene.scene_id] ?? scene.scene_text}
+                onChange={(e) => onTextChange(scene.scene_id, e.target.value)}
+                className="w-full font-serif text-sm leading-[1.85] text-[--color-text-secondary] bg-[--color-bg-card] border border-[--color-accent]/30 rounded p-3 resize-none focus:outline-none focus:border-[--color-accent]/60 min-h-[200px]"
+                style={{ height: "auto" }}
+                rows={Math.max(8, (draftTexts[scene.scene_id] ?? scene.scene_text).split("\n").length + 2)}
+              />
+            ) : (
+              <div className="text-sm leading-[1.85] text-[--color-text-secondary] font-serif">
+                {text.split(/\n\n+/).map((para, pi) => (
+                  <p key={pi} className="mb-4">
+                    {renderWithHighlight(para, anchor)}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -432,6 +467,9 @@ export function CraftStudioView() {
   const [activeCategory, setActiveCategory] = useState<string>("priority_fixes");
   const [expandedIssue, setExpandedIssue] = useState<{ cat: string; idx: number } | null>(null);
   const [resolutions, setResolutions] = useState<Record<ResolutionKey, LocalResolution>>({});
+  const [editMode, setEditMode] = useState(false);
+  const [draftTexts, setDraftTexts] = useState<Record<string, string>>({});
+  const [saveConfirm, setSaveConfirm] = useState(false);
 
   const { activeBookId } = useProjectStore();
   const queryClient = useQueryClient();
@@ -482,10 +520,13 @@ export function CraftStudioView() {
     setResolutions(map);
   }, [resolutionsData]);
 
-  // Reset issue state when chunk changes
+  // Reset issue + edit state when chunk changes
   useEffect(() => {
     setExpandedIssue(null);
     setResolutions({});
+    setEditMode(false);
+    setDraftTexts({});
+    setSaveConfirm(false);
     // Pick the first non-empty category as default
     if (detail) {
       const first = Object.entries(detail.analysis).find(([, items]) => items.length > 0)?.[0];
@@ -500,6 +541,32 @@ export function CraftStudioView() {
       setActiveCategory(first);
     }
   }, [detail]);
+
+  // Scene save mutation
+  const saveMutation = useMutation({
+    mutationFn: async (scenes: { sceneId: string; text: string }[]) => {
+      for (const { sceneId, text } of scenes) {
+        await studio.updateScene(sceneId, { scene_text: text });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dev-edit-scenes", selectedChunk, activeBookId] });
+      setDraftTexts({});
+      setEditMode(false);
+      setSaveConfirm(false);
+    },
+  });
+
+  const dirtyScenes = Object.entries(draftTexts);
+
+  const handleSaveConfirm = () => {
+    saveMutation.mutate(dirtyScenes.map(([sceneId, text]) => ({ sceneId, text })));
+  };
+
+  const handleDiscardEdits = () => {
+    setDraftTexts({});
+    setEditMode(false);
+  };
 
   // Persist mutation
   const resolveMutation = useMutation({
@@ -590,13 +657,49 @@ export function CraftStudioView() {
           >
             {detail && (
               <div className="sticky top-0 bg-[--color-bg-body] pb-3 pt-1 mb-4 border-b border-[--color-bg-accent] z-10">
-                <h2 className="font-serif text-lg font-bold text-[--color-text-primary]">{detail.chapter}</h2>
-                <p className="text-[11px] text-[--color-text-muted]">
-                  {detail.total_issues} issues · {scenesData?.scenes.length ?? 0} scenes
-                  {expandedIssue && anchor && (
-                    <span className="ml-2 text-amber-400">· highlighted in text below</span>
-                  )}
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="font-serif text-lg font-bold text-[--color-text-primary]">{detail.chapter}</h2>
+                    <p className="text-[11px] text-[--color-text-muted]">
+                      {detail.total_issues} issues · {scenesData?.scenes.length ?? 0} scenes
+                      {expandedIssue && anchor && !editMode && (
+                        <span className="ml-2 text-amber-400">· quote highlighted below</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {editMode ? (
+                      <>
+                        <button
+                          onClick={handleDiscardEdits}
+                          className="text-[11px] px-3 py-1.5 rounded border border-zinc-600 text-zinc-400 hover:bg-zinc-800/50 transition-colors"
+                        >
+                          Discard
+                        </button>
+                        {dirtyScenes.length > 0 && (
+                          <button
+                            onClick={() => setSaveConfirm(true)}
+                            className="text-[11px] px-3 py-1.5 rounded border border-emerald-700 text-emerald-400 hover:bg-emerald-900/20 transition-colors font-medium"
+                          >
+                            Save {dirtyScenes.length} change{dirtyScenes.length !== 1 ? "s" : ""}…
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => { setEditMode(true); setExpandedIssue(null); }}
+                        className="text-[11px] px-3 py-1.5 rounded border border-[--color-bg-accent] text-[--color-text-muted] hover:border-[--color-accent]/40 hover:text-[--color-text-primary] transition-colors"
+                      >
+                        ✎ Edit
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {editMode && (
+                  <p className="text-[10px] text-amber-400/70 mt-1">
+                    Editing mode — changes are local until you save to database
+                  </p>
+                )}
               </div>
             )}
 
@@ -607,7 +710,13 @@ export function CraftStudioView() {
             )}
 
             {scenesData && (
-              <SceneTextPanel scenes={scenesData.scenes} anchor={anchor} />
+              <SceneTextPanel
+                scenes={scenesData.scenes}
+                anchor={anchor}
+                editMode={editMode}
+                draftTexts={draftTexts}
+                onTextChange={(sceneId, text) => setDraftTexts((prev) => ({ ...prev, [sceneId]: text }))}
+              />
             )}
           </motion.div>
         )}
@@ -644,6 +753,40 @@ export function CraftStudioView() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Save confirmation modal ──────────────────────────────────────── */}
+      {saveConfirm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[--color-bg-card] rounded-xl border border-[--color-bg-accent] p-6 max-w-sm mx-4 shadow-xl"
+          >
+            <h3 className="font-serif text-base font-bold text-[--color-text-primary] mb-1">
+              Save changes to database?
+            </h3>
+            <p className="text-sm text-[--color-text-muted] mb-5">
+              This will update {dirtyScenes.length} scene{dirtyScenes.length !== 1 ? "s" : ""} for <span className="text-[--color-text-secondary] font-medium">{detail?.chapter}</span> in the database.
+              This action can be undone by editing again.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setSaveConfirm(false)}
+                className="text-sm px-4 py-2 rounded border border-[--color-bg-accent] text-[--color-text-muted] hover:text-[--color-text-primary] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveConfirm}
+                disabled={saveMutation.isPending}
+                className="text-sm px-4 py-2 rounded border border-emerald-700 text-emerald-400 hover:bg-emerald-900/20 transition-colors font-medium disabled:opacity-50"
+              >
+                {saveMutation.isPending ? "Saving…" : "Save to Database"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
