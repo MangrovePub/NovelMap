@@ -124,7 +124,7 @@ registerStudioChapterRoutes(server);
 registerStudioSceneRoutes(server);
 registerStudioCharacterRoutes(server);
 registerStudioLocationRoutes(server);
-registerStudioDevEditRoutes(server);
+await registerStudioDevEditRoutes(server);
 
 const port = Number(process.env.NOVELMAP_PORT ?? 3001);
 

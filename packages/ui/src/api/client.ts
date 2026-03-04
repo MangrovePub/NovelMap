@@ -572,6 +572,7 @@ export interface DevEditChunk {
   chapter: string;
   total_issues: number;
   ai_risk_count: number;
+  resolved_count: number;
   categories: Record<string, number>;
 }
 
@@ -598,9 +599,28 @@ export interface DevEditSummary {
     chunks: number;
     issues: number;
     ai_risks: number;
+    resolved: number;
     by_category: Record<string, number>;
   };
   book: { seriesKey: string | null; bookNumber: number | null };
+}
+
+export interface ChunkScene {
+  scene_id: string;
+  seq_in_chapter: number;
+  subheader: string | null;
+  word_count: number;
+  scene_text: string;
+  location: string | null;
+  time_of_day: string | null;
+}
+
+export interface DevEditResolution {
+  category: string;
+  issue_index: number;
+  status: "resolved" | "dismissed" | "noted";
+  custom_note: string | null;
+  chosen_rewrite: string | null;
 }
 
 export interface StudioLocation {
@@ -629,6 +649,34 @@ export const studio = {
     const qs = bookId ? `?bookId=${bookId}` : "";
     return request<DevEditDetail>(`/studio/dev-edit/${chunkIndex}${qs}`);
   },
+
+  getDevEditScenes: (chunkIndex: number, bookId?: string) => {
+    const qs = bookId ? `?bookId=${bookId}` : "";
+    return request<{ chapter: string | null; scenes: ChunkScene[] }>(
+      `/studio/dev-edit/${chunkIndex}/scenes${qs}`
+    );
+  },
+
+  getDevEditResolutions: (chunkIndex: number, bookId?: string) => {
+    const qs = bookId ? `?bookId=${bookId}` : "";
+    return request<{ resolutions: DevEditResolution[] }>(
+      `/studio/dev-edit/${chunkIndex}/resolutions${qs}`
+    );
+  },
+
+  resolveDevEditIssue: (data: {
+    bookId?: string;
+    chunkIndex: number;
+    category: string;
+    issueIndex: number;
+    status: "resolved" | "dismissed" | "noted";
+    customNote?: string;
+    chosenRewrite?: string;
+  }) =>
+    request<{ ok: boolean }>("/studio/dev-edit/resolve", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   listScenes: (params: {
     bookId?: string;
