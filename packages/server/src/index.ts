@@ -64,14 +64,13 @@ if (!STUDIO_TOKEN) {
 server.addHook("preHandler", async (req, reply) => {
   if (!STUDIO_TOKEN) return; // dev mode: no auth required
   if (!req.url.startsWith("/api/")) return; // static files pass through
-  if (req.url === "/api/auth/ping") return; // login check endpoint is public
   const token = (req.headers["x-studio-token"] as string ?? "").trim();
   if (token !== STUDIO_TOKEN) {
     reply.code(401).send({ error: "Unauthorized" });
   }
 });
 
-// Login check — returns 200 if token is valid (called by the login page)
+// Login check — returns 200 if token is valid, 401 if not (handled by preHandler above)
 server.get("/api/auth/ping", async () => ({ ok: true }));
 
 await server.register(cors, { origin: true });
