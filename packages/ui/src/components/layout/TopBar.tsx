@@ -1,31 +1,40 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useProjectStore } from "../../stores/project-store.ts";
 import { useUIStore } from "../../stores/ui-store.ts";
 import { useProjects } from "../../hooks/use-projects.ts";
 import { ImportDialog } from "../shared/ImportDialog.tsx";
 import { ExportDialog } from "../shared/ExportDialog.tsx";
+import { studio, type WarRoomData } from "../../api/client.ts";
 
 export function TopBar() {
   const [importOpen, setImportOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const { activeProjectId, setActiveProject } = useProjectStore();
+  const { activeProjectId, setActiveProject, activeBookId, setActiveBook } = useProjectStore();
   const { theme, toggleTheme } = useUIStore();
   const { data: projects } = useProjects();
+  const { data: warRoom } = useQuery<WarRoomData>({
+    queryKey: ["war-room"],
+    queryFn: () => studio.getWarRoom(),
+    staleTime: 60_000,
+  });
 
   return (
     <header className="flex items-center gap-4 px-6 py-3 border-b border-[--color-bg-accent] bg-[--color-bg-card]">
       <select
-        className="bg-[--color-bg-body] text-[--color-text-primary] border border-[--color-bg-accent] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[--color-accent]"
-        value={activeProjectId ?? ""}
-        onChange={(e) =>
-          setActiveProject(e.target.value ? Number(e.target.value) : null)
-        }
+        className="bg-[--color-bg-body] text-[--color-text-primary] border border-[--color-bg-accent] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[--color-accent] min-w-[180px]"
+        value={activeBookId ?? ""}
+        onChange={(e) => setActiveBook(e.target.value || null)}
       >
-        <option value="">Select a project...</option>
-        {projects?.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
+        <option value="">Select a book...</option>
+        {warRoom?.universes.map((u) => (
+          <optgroup key={u.universe_key} label={u.universe_name}>
+            {u.books.map((b) => (
+              <option key={b.book_id} value={b.book_id}>
+                {b.title}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
 
