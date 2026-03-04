@@ -80,17 +80,18 @@ export function registerStudioSceneRoutes(server: FastifyInstance) {
   // PATCH /api/studio/scenes/:sceneId — update scene text (editor save)
   server.patch<{
     Params: { sceneId: string };
-    Body: { scene_text?: string; subheader?: string; location?: string; time_of_day?: string };
+    Body: { scene_text?: string; subheader?: string; location?: string; time_of_day?: string; notes?: string };
   }>("/api/studio/scenes/:sceneId", async (req) => {
-    const { scene_text, subheader, location, time_of_day } = req.body;
+    const { scene_text, subheader, location, time_of_day, notes } = req.body;
     const sets: string[] = [];
     const params: unknown[] = [];
     let p = 1;
 
     if (scene_text  !== undefined) { sets.push(`scene_text  = $${p++}`); params.push(scene_text); }
-    if (subheader   !== undefined) { sets.push(`subheader   = $${p++}`); params.push(subheader); }
-    if (location    !== undefined) { sets.push(`location    = $${p++}`); params.push(location); }
-    if (time_of_day !== undefined) { sets.push(`time_of_day = $${p++}`); params.push(time_of_day); }
+    if (subheader   !== undefined) { sets.push(`subheader   = $${p++}`); params.push(subheader || null); }
+    if (location    !== undefined) { sets.push(`location    = $${p++}`); params.push(location || null); }
+    if (time_of_day !== undefined) { sets.push(`time_of_day = $${p++}`); params.push(time_of_day || null); }
+    if (notes       !== undefined) { sets.push(`notes       = $${p++}`); params.push(notes || null); }
 
     if (!sets.length) return { updated: false };
 
@@ -119,4 +120,23 @@ export function registerStudioSceneRoutes(server: FastifyInstance) {
 
     return updated ?? { updated: false };
   });
+
+  // DELETE /api/studio/scenes/:sceneId
+  server.delete<{ Params: { sceneId: string } }>(
+    "/api/studio/scenes/:sceneId",
+    async (req) => {
+      const [scene] = await query<{ chapter_id: string }>(
+        `DELETE FROM public.scenes WHERE scene_id = $1 RETURNING chapter_id`,
+        [req.params.sceneId]
+      );
+      if (scene?.chapter_id) {
+        await query(`
+          UPDATE public.chapters SET word_count = (
+            SELECT COALESCE(SUM(word_count), 0) FROM public.scenes WHERE chapter_id = chapters.chapter_id
+          ) WHERE chapter_id = $1
+        `, [scene.chapter_id]);
+      }
+      return { deleted: true };
+    }
+  );
 }

@@ -12,6 +12,7 @@ import { CharactersView } from "./components/characters/CharactersView.tsx";
 import { SceneExplorerView } from "./components/scenes/SceneExplorerView.tsx";
 import { PlotArchitectView } from "./components/plot/PlotArchitectView.tsx";
 import { CraftStudioView } from "./components/craft/CraftStudioView.tsx";
+import { ManuscriptEditorView } from "./components/write/ManuscriptEditorView.tsx";
 // Legacy (SQLite-backed) — kept for backward compat while migrating
 import { BookshelfView } from "./components/bookshelf/BookshelfView.tsx";
 import { GraphView } from "./components/graph/GraphView.tsx";
@@ -51,6 +52,7 @@ export function App() {
                 <Route path="/characters" element={page(<CharactersView />)} />
                 <Route path="/scenes"     element={page(<SceneExplorerView />)} />
                 <Route path="/plot"       element={page(<PlotArchitectView />)} />
+                <Route path="/write"      element={page(<ManuscriptEditorView />)} />
                 <Route path="/craft"      element={page(<CraftStudioView />)} />
                 {/* Legacy routes — still accessible while we migrate */}
                 <Route path="/bookshelf" element={page(<BookshelfView />)} />

@@ -559,6 +559,37 @@ export interface StudioChapter {
   scene_count: number;
 }
 
+export interface StudioChapterScene {
+  scene_id: string;
+  seq_in_chapter: number;
+  subheader: string | null;
+  location: string | null;
+  time_of_day: string | null;
+  word_count: number;
+  is_set_piece: boolean;
+  notes: string | null;
+}
+
+export interface StudioChapterDetail extends StudioChapter {
+  scenes: StudioChapterScene[];
+}
+
+export interface StudioSceneDetail {
+  scene_id: string;
+  book_id: string;
+  chapter_id: string;
+  seq_in_chapter: number;
+  subheader: string | null;
+  location: string | null;
+  time_of_day: string | null;
+  word_count: number;
+  is_set_piece: boolean;
+  notes: string | null;
+  scene_text: string;
+  chapter_title: string;
+  book_title: string;
+}
+
 export interface DevEditIssue {
   issue: string;
   anchor_quote?: string;
@@ -703,9 +734,39 @@ export const studio = {
   getScene: (sceneId: string) =>
     request<StudioScene>(`/studio/scenes/${sceneId}`),
 
-  updateScene: (sceneId: string, data: { scene_text?: string; subheader?: string; location?: string; time_of_day?: string }) =>
+  updateScene: (sceneId: string, data: { scene_text?: string; subheader?: string; location?: string; time_of_day?: string; notes?: string }) =>
     request<{ scene_id: string; word_count: number }>(`/studio/scenes/${sceneId}`, {
       method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteScene: (sceneId: string) =>
+    request<{ deleted: boolean }>(`/studio/scenes/${sceneId}`, { method: "DELETE" }),
+
+  getSceneDetail: (sceneId: string) =>
+    request<StudioSceneDetail>(`/studio/scenes/${sceneId}`),
+
+  getChapter: (chapterId: string) =>
+    request<StudioChapterDetail>(`/studio/chapters/${chapterId}`),
+
+  createChapter: (bookId: string, data: { title?: string; section_type?: string }) =>
+    request<StudioChapter>(`/studio/books/${bookId}/chapters`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateChapter: (chapterId: string, data: { title?: string; section_type?: string }) =>
+    request<StudioChapter>(`/studio/chapters/${chapterId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteChapter: (chapterId: string) =>
+    request<{ deleted: boolean }>(`/studio/chapters/${chapterId}`, { method: "DELETE" }),
+
+  createScene: (chapterId: string, data: { subheader?: string; scene_text?: string; location?: string; time_of_day?: string }) =>
+    request<StudioSceneDetail>(`/studio/chapters/${chapterId}/scenes`, {
+      method: "POST",
       body: JSON.stringify(data),
     }),
 
