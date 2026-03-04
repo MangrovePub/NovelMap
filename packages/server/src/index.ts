@@ -45,6 +45,7 @@ import { registerStudioChapterRoutes } from "./routes/studio/chapters.js";
 import { registerStudioSceneRoutes } from "./routes/studio/scenes.js";
 import { registerStudioCharacterRoutes } from "./routes/studio/characters.js";
 import { registerStudioLocationRoutes } from "./routes/studio/locations.js";
+import { registerStudioDevEditRoutes } from "./routes/studio/dev-edit.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -121,6 +122,7 @@ registerStudioChapterRoutes(server);
 registerStudioSceneRoutes(server);
 registerStudioCharacterRoutes(server);
 registerStudioLocationRoutes(server);
+registerStudioDevEditRoutes(server);
 
 const port = Number(process.env.NOVELMAP_PORT ?? 3001);
 

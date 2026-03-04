@@ -546,6 +546,63 @@ export interface StudioCharacter {
   book_count: number;
 }
 
+export interface StudioChapter {
+  chapter_id: string;
+  book_id: string;
+  chapter_index: number;
+  chapter_number: number | null;
+  title: string | null;
+  is_prologue: boolean;
+  is_epilogue: boolean;
+  section_type: string;
+  word_count: number;
+  scene_count: number;
+}
+
+export interface DevEditIssue {
+  issue: string;
+  anchor_quote?: string;
+  paragraph_hint?: string;
+  rewrite_a?: string;
+  rewrite_b?: string;
+}
+
+export interface DevEditChunk {
+  chunk_index: number;
+  chapter: string;
+  total_issues: number;
+  ai_risk_count: number;
+  categories: Record<string, number>;
+}
+
+export interface DevEditDetail {
+  chunk_index: number;
+  chapter: string;
+  total_issues: number;
+  ai_risk_count: number;
+  analysis: {
+    strengths: DevEditIssue[];
+    priority_fixes: DevEditIssue[];
+    pacing_notes: DevEditIssue[];
+    clarity_issues: DevEditIssue[];
+    character_notes: DevEditIssue[];
+    structure_notes: DevEditIssue[];
+    continuity_flags: DevEditIssue[];
+    ai_detection_risks: DevEditIssue[];
+  };
+}
+
+export interface DevEditSummary {
+  chunks: DevEditChunk[];
+  totals: {
+    chunks: number;
+    issues: number;
+    ai_risks: number;
+    by_category: Record<string, number>;
+  };
+  book: { seriesKey: string | null; bookNumber: number | null };
+}
+
 export interface StudioLocation {
   location: string;
   scene_count: number;
@@ -561,7 +618,17 @@ export const studio = {
   getBook: (bookId: string) => request<StudioBook>(`/studio/books/${bookId}`),
 
   listChapters: (bookId: string) =>
-    request<unknown[]>(`/studio/books/${bookId}/chapters`),
+    request<StudioChapter[]>(`/studio/books/${bookId}/chapters`),
+
+  getDevEdit: (bookId?: string) => {
+    const qs = bookId ? `?bookId=${bookId}` : "";
+    return request<DevEditSummary>(`/studio/dev-edit${qs}`);
+  },
+
+  getDevEditChunk: (chunkIndex: number, bookId?: string) => {
+    const qs = bookId ? `?bookId=${bookId}` : "";
+    return request<DevEditDetail>(`/studio/dev-edit/${chunkIndex}${qs}`);
+  },
 
   listScenes: (params: {
     bookId?: string;

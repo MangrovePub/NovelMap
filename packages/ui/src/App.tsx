@@ -10,6 +10,8 @@ import { WarRoomView } from "./components/war-room/WarRoomView.tsx";
 import { LocationAtlasView } from "./components/locations/LocationAtlasView.tsx";
 import { CharactersView } from "./components/characters/CharactersView.tsx";
 import { SceneExplorerView } from "./components/scenes/SceneExplorerView.tsx";
+import { PlotArchitectView } from "./components/plot/PlotArchitectView.tsx";
+import { CraftStudioView } from "./components/craft/CraftStudioView.tsx";
 // Legacy (SQLite-backed) — kept for backward compat while migrating
 import { BookshelfView } from "./components/bookshelf/BookshelfView.tsx";
 import { GraphView } from "./components/graph/GraphView.tsx";
@@ -48,6 +50,8 @@ export function App() {
                 <Route path="/locations"  element={page(<LocationAtlasView />)} />
                 <Route path="/characters" element={page(<CharactersView />)} />
                 <Route path="/scenes"     element={page(<SceneExplorerView />)} />
+                <Route path="/plot"       element={page(<PlotArchitectView />)} />
+                <Route path="/craft"      element={page(<CraftStudioView />)} />
                 {/* Legacy routes — still accessible while we migrate */}
                 <Route path="/bookshelf" element={page(<BookshelfView />)} />
                 <Route path="/entities" element={page(<EntityDashboard />)} />
@@ -57,7 +61,6 @@ export function App() {
                 <Route path="/fieldguide" element={page(<FieldGuideView />)} />
                 <Route path="/timeline" element={page(<TimelineView />)} />
                 <Route path="/mindmap" element={page(<MindMapView />)} />
-                <Route path="/plot" element={page(<PlotDiagramView />)} />
                 <Route path="/plugins" element={page(<PluginsView />)} />
                 <Route path="/snapshots" element={page(<SnapshotView />)} />
                 <Route path="/manuscript/:id" element={page(<ManuscriptView />)} />
