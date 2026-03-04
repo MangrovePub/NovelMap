@@ -476,6 +476,138 @@ export const api = {
     }),
 };
 
+// ── Studio types (mangrove_workbench) ──────────────────────────────────────
+
+export interface StudioBook {
+  book_id: string;
+  title: string;
+  universe_key: string;
+  series_key: string;
+  book_number: number | null;
+  word_count: number;
+  word_target: number;
+  chapter_count: number;
+  scene_count: number;
+  dev_edit_issues: number;
+}
+
+export interface StudioUniverse {
+  universe_key: string;
+  universe_name: string;
+  total_words: number;
+  total_chapters: number;
+  total_scenes: number;
+  books: StudioBook[];
+}
+
+export interface WarRoomData {
+  universes: StudioUniverse[];
+  totals: {
+    universes: number;
+    books: number;
+    words: number;
+    chapters: number;
+    scenes: number;
+  };
+}
+
+export interface StudioScene {
+  scene_id: string;
+  book_id: string;
+  chapter_id: string;
+  seq_in_chapter: number;
+  subheader: string | null;
+  location: string | null;
+  time_of_day: string | null;
+  word_count: number;
+  is_set_piece: boolean;
+  notes: string | null;
+  preview: string;
+  chapter_title: string;
+  chapter_number: number | null;
+  chapter_index: number;
+  book_title: string;
+  universe_key: string;
+  series_key: string;
+}
+
+export interface StudioCharacter {
+  character_id: string;
+  name: string;
+  role: string | null;
+  universe_key: string;
+  book_id: string | null;
+  scene_count: number;
+  book_count: number;
+}
+
+export interface StudioLocation {
+  location: string;
+  scene_count: number;
+  book_count: number;
+  character_count: number;
+}
+
+export const studio = {
+  getWarRoom: () => request<WarRoomData>("/studio/war-room"),
+
+  listBooks: () => request<StudioBook[]>("/studio/books"),
+
+  getBook: (bookId: string) => request<StudioBook>(`/studio/books/${bookId}`),
+
+  listChapters: (bookId: string) =>
+    request<unknown[]>(`/studio/books/${bookId}/chapters`),
+
+  listScenes: (params: {
+    bookId?: string;
+    characterId?: string;
+    location?: string;
+    timeOfDay?: string;
+    minWords?: number;
+    q?: string;
+    limit?: number;
+    offset?: number;
+  } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.bookId)      qs.set("bookId",      params.bookId);
+    if (params.characterId) qs.set("characterId", params.characterId);
+    if (params.location)    qs.set("location",    params.location);
+    if (params.timeOfDay)   qs.set("timeOfDay",   params.timeOfDay);
+    if (params.minWords)    qs.set("minWords",    String(params.minWords));
+    if (params.q)           qs.set("q",           params.q);
+    if (params.limit)       qs.set("limit",       String(params.limit));
+    if (params.offset)      qs.set("offset",      String(params.offset));
+    return request<{ scenes: StudioScene[]; total: number }>(`/studio/scenes?${qs}`);
+  },
+
+  getScene: (sceneId: string) =>
+    request<StudioScene>(`/studio/scenes/${sceneId}`),
+
+  listCharacters: (params: { universeKey?: string; bookId?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.universeKey) qs.set("universeKey", params.universeKey);
+    if (params.bookId)      qs.set("bookId",      params.bookId);
+    return request<StudioCharacter[]>(`/studio/characters?${qs}`);
+  },
+
+  getCharacterDossier: (characterId: string) =>
+    request<unknown>(`/studio/characters/${characterId}/dossier`),
+
+  listLocations: (params: { universeKey?: string; bookId?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.universeKey) qs.set("universeKey", params.universeKey);
+    if (params.bookId)      qs.set("bookId",      params.bookId);
+    return request<StudioLocation[]>(`/studio/locations?${qs}`);
+  },
+
+  getLocation: (location: string, params: { bookId?: string; characterId?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.bookId)      qs.set("bookId",      params.bookId);
+    if (params.characterId) qs.set("characterId", params.characterId);
+    return request<unknown>(`/studio/locations/${encodeURIComponent(location)}?${qs}`);
+  },
+};
+
 export function resolveCoverUrl(coverUrl: string | null): string | null {
   if (!coverUrl) return null;
   if (coverUrl.startsWith("http://") || coverUrl.startsWith("https://")) return coverUrl;

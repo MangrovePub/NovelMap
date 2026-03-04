@@ -18,10 +18,12 @@
     "@fastify/multipart": "^9.0.3",
     "@fastify/static": "^9.0.0",
     "@novelmap/core": "*",
-    "fastify": "^5.2.1"
+    "fastify": "^5.2.1",
+    "pg": "^8.13.3"
   },
   "devDependencies": {
     "@types/node": "^25.2.2",
+    "@types/pg": "^8.11.11",
     "tsx": "^4.19.4",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

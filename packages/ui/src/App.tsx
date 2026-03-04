@@ -5,6 +5,9 @@ import { TopBar } from "./components/layout/TopBar.tsx";
 import { AnimatedPage } from "./components/shared/AnimatedPage.tsx";
 import { ErrorBoundary } from "./components/shared/ErrorBoundary.tsx";
 import { CommandPalette } from "./components/shared/CommandPalette.tsx";
+// Studio pillars
+import { WarRoomView } from "./components/war-room/WarRoomView.tsx";
+// Legacy (SQLite-backed) — kept for backward compat while migrating
 import { BookshelfView } from "./components/bookshelf/BookshelfView.tsx";
 import { GraphView } from "./components/graph/GraphView.tsx";
 import { FieldGuideView } from "./components/fieldguide/FieldGuideView.tsx";
@@ -35,7 +38,11 @@ export function App() {
           <ErrorBoundary>
             <AnimatePresence mode="wait">
               <Routes location={location} key={location.pathname}>
-                <Route path="/" element={<Navigate to="/bookshelf" replace />} />
+                {/* Default → War Room */}
+                <Route path="/" element={<Navigate to="/war-room" replace />} />
+                {/* Studio pillars */}
+                <Route path="/war-room"   element={page(<WarRoomView />)} />
+                {/* Legacy routes — still accessible while we migrate */}
                 <Route path="/bookshelf" element={page(<BookshelfView />)} />
                 <Route path="/entities" element={page(<EntityDashboard />)} />
                 <Route path="/crossbook" element={page(<CrossBookView />)} />

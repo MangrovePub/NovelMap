@@ -1,8 +1,23 @@
 /**
- * NovelMap API Server
+ * Mangrove Publication Studio — API Server
  * Copyright (c) 2026 Robert Cummer, Mangrove Publishing LLC
  * Licensed under the MIT License
  */
+
+// Load .env for local dev (no-op in production where env vars are injected)
+import { config } from "node:process";
+try {
+  const { readFileSync } = await import("node:fs");
+  const env = readFileSync(new URL("../../.env", import.meta.url), "utf8");
+  for (const line of env.split("\n")) {
+    const [k, ...rest] = line.split("=");
+    if (k && !k.startsWith("#") && !(k.trim() in process.env)) {
+      process.env[k.trim()] = rest.join("=").trim();
+    }
+  }
+} catch { /* no .env — rely on actual env vars */ }
+
+void config; // suppress unused import lint
 
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
@@ -23,6 +38,13 @@ import { registerAnalyzerRoutes } from "./routes/analyzers.js";
 import { registerPluginRoutes } from "./routes/plugins.js";
 import { registerSnapshotRoutes } from "./routes/snapshots.js";
 import { registerExtractionRoutes } from "./routes/extraction.js";
+// Studio routes (mangrove_workbench / PostgreSQL)
+import { registerWarRoomRoutes } from "./routes/studio/war-room.js";
+import { registerStudioBookRoutes } from "./routes/studio/books.js";
+import { registerStudioChapterRoutes } from "./routes/studio/chapters.js";
+import { registerStudioSceneRoutes } from "./routes/studio/scenes.js";
+import { registerStudioCharacterRoutes } from "./routes/studio/characters.js";
+import { registerStudioLocationRoutes } from "./routes/studio/locations.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -71,6 +93,13 @@ registerAnalyzerRoutes(server);
 registerPluginRoutes(server);
 registerSnapshotRoutes(server);
 registerExtractionRoutes(server);
+// Studio (PostgreSQL / mangrove_workbench)
+registerWarRoomRoutes(server);
+registerStudioBookRoutes(server);
+registerStudioChapterRoutes(server);
+registerStudioSceneRoutes(server);
+registerStudioCharacterRoutes(server);
+registerStudioLocationRoutes(server);
 
 const port = Number(process.env.NOVELMAP_PORT ?? 3001);
 
