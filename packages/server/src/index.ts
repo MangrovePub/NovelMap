@@ -54,16 +54,18 @@ const server = Fastify({ logger: true });
 // ── Simple token auth ─────────────────────────────────────────────────────────
 // All /api/* routes require header: x-studio-token: <STUDIO_TOKEN env var>
 // The UI login page verifies via GET /api/auth/ping
-const STUDIO_TOKEN = process.env.STUDIO_TOKEN;
+const STUDIO_TOKEN = process.env.STUDIO_TOKEN?.trim();
 if (!STUDIO_TOKEN) {
   console.warn("⚠️  STUDIO_TOKEN not set — API is unprotected");
+} else {
+  console.log(`Studio auth enabled (token prefix: ${STUDIO_TOKEN.substring(0, 4)}***)`);
 }
 
 server.addHook("preHandler", async (req, reply) => {
   if (!STUDIO_TOKEN) return; // dev mode: no auth required
   if (!req.url.startsWith("/api/")) return; // static files pass through
   if (req.url === "/api/auth/ping") return; // login check endpoint is public
-  const token = req.headers["x-studio-token"];
+  const token = (req.headers["x-studio-token"] as string ?? "").trim();
   if (token !== STUDIO_TOKEN) {
     reply.code(401).send({ error: "Unauthorized" });
   }
