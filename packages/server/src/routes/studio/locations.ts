@@ -7,7 +7,16 @@ export function registerStudioLocationRoutes(server: FastifyInstance) {
     "/api/studio/locations",
     async (req) => {
       const { universeKey, bookId } = req.query;
-      const conditions: string[] = ["s.location IS NOT NULL"];
+      const conditions: string[] = [
+        "s.location IS NOT NULL",
+        "length(trim(s.location)) >= 3",
+        // Filter out chapter heading artifacts, timestamps, and non-place entries
+        "s.location !~ '^Chapter '",
+        "s.location !~ '(A\\.M\\.|P\\.M\\.)'",
+        "s.location !~ '[0-9]+:[0-9]+'",
+        "s.location !~ '^[0-9]'",
+        "s.location !~ '(hours after|Author''s Note|Briefing Day|Asset Seven|Blowback|Aftermath|Operation)'",
+      ];
       const params: unknown[] = [];
       let p = 1;
       if (universeKey) { conditions.push(`b.universe_key = $${p++}`); params.push(universeKey); }

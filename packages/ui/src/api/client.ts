@@ -547,7 +547,10 @@ export interface StudioCharacter {
   name: string;
   role: string | null;
   universe_key: string;
-  book_id: string | null;
+  book_id: string;
+  is_series_regular: boolean;
+  notes: string | null;
+  description: string | null;
   scene_count: number;
   book_count: number;
 }
@@ -704,6 +707,12 @@ export const studio = {
 
   listBooks: () => request<StudioBook[]>("/studio/books"),
 
+  createBook: (data: { title: string; universe_key: string; series_key: string; book_number: number }) =>
+    request<StudioBook>("/studio/books", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   getBook: (bookId: string) => request<StudioBook>(`/studio/books/${bookId}`),
 
   listChapters: (bookId: string) =>
@@ -814,6 +823,21 @@ export const studio = {
     if (params.bookId)      qs.set("bookId",      params.bookId);
     return request<StudioCharacter[]>(`/studio/characters?${qs}`);
   },
+
+  createCharacter: (bookId: string, data: { name: string; role?: string; notes?: string; description?: string; is_series_regular?: boolean }) =>
+    request<StudioCharacter>(`/studio/characters?bookId=${bookId}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateCharacter: (characterId: string, data: { name?: string; role?: string; notes?: string; description?: string; is_series_regular?: boolean }) =>
+    request<StudioCharacter>(`/studio/characters/${characterId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteCharacter: (characterId: string) =>
+    request<{ deleted: boolean }>(`/studio/characters/${characterId}`, { method: "DELETE" }),
 
   getCharacterDossier: (characterId: string) =>
     request<unknown>(`/studio/characters/${characterId}/dossier`),

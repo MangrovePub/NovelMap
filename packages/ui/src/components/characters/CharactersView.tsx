@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { studio, type StudioCharacter } from "../../api/client.ts";
 import { useProjectStore } from "../../stores/project-store.ts";
+
+const ROLES = ["protagonist", "deuteragonist", "antagonist", "supporting", "minor", "mentioned"];
 
 const ROLE_COLORS: Record<string, string> = {
   protagonist:    "bg-emerald-800/60 text-emerald-300 border-emerald-700",
@@ -24,19 +26,124 @@ function roleBadge(role: string | null) {
   );
 }
 
+// ── New / Edit Character modal ─────────────────────────────────────────────────
+function CharacterModal({
+  bookId,
+  character,
+  onClose,
+}: {
+  bookId: string;
+  character?: StudioCharacter;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(character?.name ?? "");
+  const [role, setRole] = useState(character?.role ?? "");
+  const [notes, setNotes] = useState(character?.notes ?? "");
+  const [isSeries, setIsSeries] = useState(character?.is_series_regular ?? false);
+
+  const create = useMutation({
+    mutationFn: () => studio.createCharacter(bookId, { name, role: role || undefined, notes: notes || undefined, is_series_regular: isSeries }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["studio-characters"] }); onClose(); },
+  });
+
+  const update = useMutation({
+    mutationFn: () => studio.updateCharacter(character!.character_id, { name, role: role || undefined, notes: notes || undefined, is_series_regular: isSeries }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["studio-characters"] }); onClose(); },
+  });
+
+  const save = () => character ? update.mutate() : create.mutate();
+  const isPending = create.isPending || update.isPending;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-96 rounded-xl border border-[--color-bg-accent] bg-[--color-bg-card] p-6 flex flex-col gap-4"
+      >
+        <h2 className="font-serif text-base font-bold text-[--color-text-primary]">
+          {character ? "Edit Character" : "New Character"}
+        </h2>
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-[--color-text-muted] font-semibold block mb-1">Name *</label>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Character name"
+              className="w-full px-3 py-2 bg-[--color-bg-body] border border-[--color-bg-accent] rounded-lg text-sm text-[--color-text-primary] placeholder:text-[--color-text-muted] focus:outline-none focus:ring-1 focus:ring-[--color-accent]"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-[--color-text-muted] font-semibold block mb-1">Role</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full px-3 py-2 bg-[--color-bg-body] border border-[--color-bg-accent] rounded-lg text-sm text-[--color-text-primary] focus:outline-none focus:ring-1 focus:ring-[--color-accent]"
+            >
+              <option value="">— no role —</option>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-[--color-text-muted] font-semibold block mb-1">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 bg-[--color-bg-body] border border-[--color-bg-accent] rounded-lg text-sm text-[--color-text-primary] placeholder:text-[--color-text-muted] focus:outline-none focus:ring-1 focus:ring-[--color-accent] resize-none"
+            />
+          </div>
+
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isSeries}
+              onChange={(e) => setIsSeries(e.target.checked)}
+              className="accent-[--color-accent] w-3.5 h-3.5"
+            />
+            <span className="text-sm text-[--color-text-secondary]">Series regular (appears across books)</span>
+          </label>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-1">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-[--color-text-muted] hover:text-[--color-text-primary] transition-colors">Cancel</button>
+          <button
+            onClick={save}
+            disabled={!name.trim() || isPending}
+            className="px-4 py-2 bg-[--color-accent] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isPending ? "Saving…" : character ? "Save" : "Create"}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function CharacterCard({
   char,
   selected,
   onClick,
+  onEdit,
 }: {
   char: StudioCharacter;
   selected: boolean;
   onClick: () => void;
+  onEdit: (e: React.MouseEvent) => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`text-left rounded-xl border p-4 flex flex-col gap-2 transition-colors ${
+      className={`group text-left rounded-xl border p-4 flex flex-col gap-2 transition-colors ${
         selected
           ? "border-[--color-accent] bg-[--color-bg-accent]"
           : "border-[--color-bg-accent] bg-[--color-bg-card] hover:border-[--color-accent]/40"
@@ -46,7 +153,18 @@ function CharacterCard({
         <h3 className="font-serif text-sm font-semibold text-[--color-text-primary] leading-snug">
           {char.name}
         </h3>
-        {roleBadge(char.role)}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {roleBadge(char.role)}
+          <button
+            onClick={onEdit}
+            title="Edit character"
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-[--color-text-muted] hover:text-[--color-text-primary]"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+            </svg>
+          </button>
+        </div>
       </div>
       <div className="flex gap-4 text-[11px] text-[--color-text-muted]">
         <span>{char.scene_count} {char.scene_count === 1 ? "scene" : "scenes"}</span>
@@ -54,6 +172,9 @@ function CharacterCard({
           <span className="text-blue-400">{char.book_count} books</span>
         )}
         {char.book_count === 1 && <span>1 book</span>}
+        {char.is_series_regular && (
+          <span className="text-[--color-accent]">series</span>
+        )}
       </div>
     </button>
   );
@@ -149,6 +270,7 @@ export function CharactersView() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [selected, setSelected] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<StudioCharacter | null | "new">(null);
   const { activeBookId } = useProjectStore();
 
   const { data: characters, isLoading, isError } = useQuery<StudioCharacter[]>({
@@ -157,7 +279,7 @@ export function CharactersView() {
     staleTime: 30_000,
   });
 
-  const roles = ["all", "protagonist", "deuteragonist", "antagonist", "supporting", "minor", "mentioned"];
+  const allRoles = ["all", ...ROLES];
 
   const filtered = (characters ?? []).filter((c) => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase());
@@ -178,6 +300,17 @@ export function CharactersView() {
               {activeBookId ? " · filtered to active book" : " · all books"}
             </p>
           </div>
+          {activeBookId && (
+            <button
+              onClick={() => setEditTarget("new")}
+              className="flex items-center gap-2 px-3 py-1.5 bg-[--color-accent] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              New Character
+            </button>
+          )}
         </motion.div>
 
         {/* Search + role filter */}
@@ -199,13 +332,13 @@ export function CharactersView() {
             onChange={(e) => setRoleFilter(e.target.value)}
             className="bg-[--color-bg-card] text-[--color-text-primary] border border-[--color-bg-accent] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[--color-accent]"
           >
-            {roles.map((r) => (
+            {allRoles.map((r) => (
               <option key={r} value={r}>{r === "all" ? "All roles" : r.charAt(0).toUpperCase() + r.slice(1)}</option>
             ))}
           </select>
         </div>
 
-        {/* Grid */}
+        {/* States */}
         {isLoading && (
           <div className="flex items-center justify-center h-48 text-[--color-text-muted]">
             <div className="flex flex-col items-center gap-3">
@@ -217,13 +350,23 @@ export function CharactersView() {
 
         {isError && (
           <div className="flex items-center justify-center h-48">
-            <p className="text-sm text-[--color-accent]">Failed to load characters.</p>
+            <p className="text-sm text-red-400">Failed to load characters.</p>
           </div>
         )}
 
-        {!isLoading && filtered.length === 0 && (
-          <div className="flex items-center justify-center h-48 text-[--color-text-muted]">
-            <p className="text-sm italic">No characters found.</p>
+        {!isLoading && !isError && filtered.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-4 h-48 text-[--color-text-muted]">
+            <p className="text-sm italic">
+              {characters?.length === 0 ? "No characters yet." : "No characters match your search."}
+            </p>
+            {characters?.length === 0 && activeBookId && (
+              <button
+                onClick={() => setEditTarget("new")}
+                className="px-4 py-2 bg-[--color-accent] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Add First Character
+              </button>
+            )}
           </div>
         )}
 
@@ -239,6 +382,7 @@ export function CharactersView() {
                 char={char}
                 selected={selected === char.character_id}
                 onClick={() => setSelected(selected === char.character_id ? null : char.character_id)}
+                onEdit={(e) => { e.stopPropagation(); setEditTarget(char); }}
               />
             </motion.div>
           ))}
@@ -269,6 +413,17 @@ export function CharactersView() {
               <CharacterDetail characterId={selected} />
             </div>
           </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Create / edit modal */}
+      <AnimatePresence>
+        {editTarget !== null && activeBookId && (
+          <CharacterModal
+            bookId={activeBookId}
+            character={editTarget === "new" ? undefined : editTarget}
+            onClose={() => setEditTarget(null)}
+          />
         )}
       </AnimatePresence>
     </div>

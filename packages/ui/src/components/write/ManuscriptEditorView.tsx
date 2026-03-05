@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   studio,
   type StudioBook,
@@ -7,6 +7,104 @@ import {
   type StudioChapterScene,
   type StudioSceneDetail,
 } from "../../api/client";
+
+// ── Known universes / series for the New Book form ────────────────────────────
+const UNIVERSES = [
+  { key: "knox_ramsey_universe", label: "Knox Ramsey Universe", series: [{ key: "knox_ramsey", label: "Knox Ramsey" }] },
+  { key: "dunlap_universe",      label: "Dunlap / Blackwood",   series: [{ key: "dunlap_saga", label: "Dunlap Saga" }, { key: "blackwood", label: "Blackwood" }] },
+  { key: "dahl_universe",        label: "Jackson Dahl Universe", series: [{ key: "jackson_dahl_pi", label: "Jackson Dahl PI" }] },
+];
+
+function NewBookModal({ onClose, onCreated }: { onClose: () => void; onCreated: (bookId: string) => void }) {
+  const qc = useQueryClient();
+  const [title, setTitle] = useState("");
+  const [universeKey, setUniverseKey] = useState(UNIVERSES[0].key);
+  const [seriesKey, setSeriesKey] = useState(UNIVERSES[0].series[0].key);
+  const [bookNumber, setBookNumber] = useState(1);
+
+  const universe = UNIVERSES.find((u) => u.key === universeKey) ?? UNIVERSES[0];
+
+  const create = useMutation({
+    mutationFn: () => studio.createBook({ title: title.trim(), universe_key: universeKey, series_key: seriesKey, book_number: bookNumber }),
+    onSuccess: (book) => {
+      qc.invalidateQueries({ queryKey: ["studio-books"] });
+      qc.invalidateQueries({ queryKey: ["war-room"] });
+      onCreated(book.book_id);
+      onClose();
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="w-96 rounded-xl border border-[--color-bg-accent] bg-[--color-bg-card] p-6 flex flex-col gap-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-serif text-base font-bold text-[--color-text-primary]">New Book</h2>
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-[--color-text-muted] font-semibold block mb-1">Title *</label>
+            <input
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Book title"
+              className="w-full px-3 py-2 bg-[--color-bg-body] border border-[--color-bg-accent] rounded-lg text-sm text-[--color-text-primary] placeholder:text-[--color-text-muted] focus:outline-none focus:ring-1 focus:ring-[--color-accent]"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-[--color-text-muted] font-semibold block mb-1">Universe</label>
+            <select
+              value={universeKey}
+              onChange={(e) => {
+                const u = UNIVERSES.find((u) => u.key === e.target.value) ?? UNIVERSES[0];
+                setUniverseKey(u.key);
+                setSeriesKey(u.series[0].key);
+              }}
+              className="w-full px-3 py-2 bg-[--color-bg-body] border border-[--color-bg-accent] rounded-lg text-sm text-[--color-text-primary] focus:outline-none focus:ring-1 focus:ring-[--color-accent]"
+            >
+              {UNIVERSES.map((u) => <option key={u.key} value={u.key}>{u.label}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-[10px] uppercase tracking-widest text-[--color-text-muted] font-semibold block mb-1">Series</label>
+              <select
+                value={seriesKey}
+                onChange={(e) => setSeriesKey(e.target.value)}
+                className="w-full px-3 py-2 bg-[--color-bg-body] border border-[--color-bg-accent] rounded-lg text-sm text-[--color-text-primary] focus:outline-none focus:ring-1 focus:ring-[--color-accent]"
+              >
+                {universe.series.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              </select>
+            </div>
+            <div className="w-24">
+              <label className="text-[10px] uppercase tracking-widest text-[--color-text-muted] font-semibold block mb-1">Book #</label>
+              <input
+                type="number"
+                min={1}
+                value={bookNumber}
+                onChange={(e) => setBookNumber(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-[--color-bg-body] border border-[--color-bg-accent] rounded-lg text-sm text-[--color-text-primary] focus:outline-none focus:ring-1 focus:ring-[--color-accent]"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-1">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-[--color-text-muted] hover:text-[--color-text-primary] transition-colors">Cancel</button>
+          <button
+            onClick={() => create.mutate()}
+            disabled={!title.trim() || create.isPending}
+            className="px-4 py-2 bg-[--color-accent] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {create.isPending ? "Creating…" : "Create Book"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -150,6 +248,7 @@ function ChapterItem({
 export function ManuscriptEditorView() {
   // ── Book ──────────────────────────────────────────────────────────────────
   const [bookId, setBookId] = useState<string | null>(null);
+  const [showNewBook, setShowNewBook] = useState(false);
 
   const { data: booksData } = useQuery({
     queryKey: ["studio-books"],
@@ -370,17 +469,26 @@ export function ManuscriptEditorView() {
       {/* ── Left nav ── */}
       <div className="w-60 shrink-0 flex flex-col bg-[--color-bg-card] border-r border-[--color-bg-accent] h-full">
         {/* Book selector */}
-        <div className="p-3 border-b border-[--color-bg-accent]">
+        <div className="p-3 border-b border-[--color-bg-accent] flex gap-1.5">
           <select
             value={bookId ?? ""}
             onChange={e => setBookId(e.target.value || null)}
-            className="w-full text-xs bg-[--color-bg-body] border border-[--color-bg-accent] rounded px-2 py-1.5 text-[--color-text-primary]"
+            className="flex-1 min-w-0 text-xs bg-[--color-bg-body] border border-[--color-bg-accent] rounded px-2 py-1.5 text-[--color-text-primary]"
           >
             <option value="">Select a book…</option>
             {books.map(b => (
               <option key={b.book_id} value={b.book_id}>{b.title}</option>
             ))}
           </select>
+          <button
+            onClick={() => setShowNewBook(true)}
+            title="New book"
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded border border-[--color-bg-accent] text-[--color-text-muted] hover:text-[--color-accent] hover:border-[--color-accent] transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
         </div>
 
         {/* Chapter / scene tree */}
@@ -557,6 +665,14 @@ export function ManuscriptEditorView() {
           </>
         )}
       </div>
+
+      {/* ── New Book modal ── */}
+      {showNewBook && (
+        <NewBookModal
+          onClose={() => setShowNewBook(false)}
+          onCreated={(id) => setBookId(id)}
+        />
+      )}
 
       {/* ── Rename modal ── */}
       {renameModal && (
