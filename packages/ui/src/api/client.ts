@@ -596,6 +596,38 @@ export interface StudioSceneDetail {
   book_title: string;
 }
 
+export interface StudioArc {
+  arc_id: string;
+  arc_name: string;
+  arc_type: "main" | "subplot";
+  description: string | null;
+}
+
+export interface StoryboardScene {
+  scene_id: string;
+  seq_in_chapter: number;
+  subheader: string | null;
+  word_count: number;
+  location: string | null;
+  arc_ids: string[];
+}
+
+export interface StoryboardChapter {
+  chapter_id: string;
+  chapter_index: number;
+  chapter_number: number | null;
+  chapter_title: string | null;
+  section_type: string;
+  is_prologue: boolean;
+  is_epilogue: boolean;
+  scenes: StoryboardScene[];
+}
+
+export interface StoryboardData {
+  arcs: StudioArc[];
+  chapters: StoryboardChapter[];
+}
+
 export interface DevEditIssue {
   issue: string;
   anchor_quote?: string;
@@ -799,6 +831,34 @@ export const studio = {
     if (params.characterId) qs.set("characterId", params.characterId);
     return request<unknown>(`/studio/locations/${encodeURIComponent(location)}?${qs}`);
   },
+
+  // ── Arcs & storyboard ─────────────────────────────────────────────────────
+  getStoryboard: (bookId: string) =>
+    request<StoryboardData>(`/studio/books/${bookId}/storyboard`),
+
+  listArcs: (bookId: string) =>
+    request<StudioArc[]>(`/studio/books/${bookId}/arcs`),
+
+  createArc: (bookId: string, data: { arc_name: string; arc_type: string; description?: string }) =>
+    request<StudioArc>(`/studio/books/${bookId}/arcs`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateArc: (arcId: string, data: { arc_name?: string; arc_type?: string; description?: string }) =>
+    request<StudioArc>(`/studio/arcs/${arcId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteArc: (arcId: string) =>
+    request<{ deleted: boolean }>(`/studio/arcs/${arcId}`, { method: "DELETE" }),
+
+  assignSceneToArc: (sceneId: string, arcId: string) =>
+    request<{ assigned: boolean }>(`/studio/scenes/${sceneId}/arcs/${arcId}`, { method: "POST" }),
+
+  removeSceneFromArc: (sceneId: string, arcId: string) =>
+    request<{ unassigned: boolean }>(`/studio/scenes/${sceneId}/arcs/${arcId}`, { method: "DELETE" }),
 };
 
 export function resolveCoverUrl(coverUrl: string | null): string | null {
