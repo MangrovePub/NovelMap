@@ -1,18 +1,83 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useProjectStore } from "../../stores/project-store.ts";
-import { useUIStore } from "../../stores/ui-store.ts";
+import { useUIStore, THEMES, type Theme } from "../../stores/ui-store.ts";
 import { useProjects } from "../../hooks/use-projects.ts";
 import { ImportDialog } from "../shared/ImportDialog.tsx";
 import { ExportDialog } from "../shared/ExportDialog.tsx";
 import { studio, type WarRoomData } from "../../api/client.ts";
 
+const THEME_SWATCHES: Record<Theme, { bg: string; accent: string }> = {
+  night:  { bg: "#161c28", accent: "#3b9eff" },
+  amber:  { bg: "#241c12", accent: "#e8941e" },
+  studio: { bg: "#ffffff", accent: "#d43b56" },
+};
+
+function ThemePicker() {
+  const { theme, setTheme } = useUIStore();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  const current = THEMES.find((t) => t.id === theme)!;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title="Change theme"
+        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[--color-bg-body] border border-[--color-bg-accent] text-[--color-text-muted] hover:text-[--color-text-secondary] hover:border-[--color-text-muted] transition-colors text-xs"
+      >
+        <span
+          className="w-3 h-3 rounded-full shrink-0 border border-white/20"
+          style={{ background: THEME_SWATCHES[theme].accent }}
+        />
+        <span className="hidden sm:inline text-[--color-text-secondary]">{current.label}</span>
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute top-full mt-1 right-0 z-50 rounded-xl border border-[--color-bg-accent] bg-[--color-bg-card] shadow-xl p-1.5 flex flex-col gap-0.5 min-w-[130px]">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => { setTheme(t.id); setOpen(false); }}
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left w-full
+                ${theme === t.id
+                  ? "bg-[--color-bg-accent] text-[--color-text-primary]"
+                  : "text-[--color-text-secondary] hover:bg-[--color-bg-accent] hover:text-[--color-text-primary]"
+                }`}
+            >
+              <span
+                className="w-4 h-4 rounded-full shrink-0 border border-white/10 flex items-center justify-center"
+                style={{ background: THEME_SWATCHES[t.id].bg, boxShadow: `0 0 0 2px ${THEME_SWATCHES[t.id].accent}` }}
+              />
+              <span>{t.label}</span>
+              {theme === t.id && (
+                <svg className="w-3 h-3 ml-auto text-[--color-accent]" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TopBar() {
-  const [importOpen, setImportOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const { activeProjectId, setActiveProject, activeBookId, setActiveBook } = useProjectStore();
-  const { theme, toggleTheme } = useUIStore();
-  const { data: projects } = useProjects();
+  const { activeProjectId, activeBookId, setActiveBook } = useProjectStore();
   const { data: warRoom } = useQuery<WarRoomData>({
     queryKey: ["war-room"],
     queryFn: () => studio.getWarRoom(),
@@ -20,7 +85,7 @@ export function TopBar() {
   });
 
   return (
-    <header className="flex items-center gap-4 px-6 py-3 border-b border-[--color-bg-accent] bg-[--color-bg-card]">
+    <header className="flex items-center gap-3 px-4 py-2.5 border-b border-[--color-bg-accent] bg-[--color-bg-card]">
       <select
         className="bg-[--color-bg-body] text-[--color-text-primary] border border-[--color-bg-accent] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[--color-accent] min-w-[180px]"
         value={activeBookId ?? ""}
@@ -30,9 +95,7 @@ export function TopBar() {
         {warRoom?.universes.map((u) => (
           <optgroup key={u.universe_key} label={u.universe_name}>
             {u.books.map((b) => (
-              <option key={b.book_id} value={b.book_id}>
-                {b.title}
-              </option>
+              <option key={b.book_id} value={b.book_id}>{b.title}</option>
             ))}
           </optgroup>
         ))}
@@ -47,78 +110,23 @@ export function TopBar() {
           <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
         </svg>
         <span className="hidden sm:inline">Search...</span>
-        <kbd className="hidden sm:inline-block ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-[--color-bg-card] border border-[--color-bg-accent] rounded">
-          ⌘K
-        </kbd>
+        <kbd className="hidden sm:inline-block ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-[--color-bg-card] border border-[--color-bg-accent] rounded">⌘K</kbd>
       </button>
 
-      {/* Theme toggle */}
-      <button
-        onClick={toggleTheme}
-        className="flex items-center justify-center w-8 h-8 rounded-lg bg-[--color-bg-body] border border-[--color-bg-accent] text-[--color-text-muted] hover:text-[--color-text-secondary] hover:border-[--color-text-muted] transition-colors"
-        title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      >
-        {theme === "dark" ? (
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-          </svg>
-        ) : (
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-          </svg>
-        )}
-      </button>
+      <ThemePicker />
 
       <div className="flex-1" />
 
       <button
-        onClick={() => setImportOpen(true)}
-        disabled={!activeProjectId}
-        className="flex items-center gap-2 px-4 py-1.5 bg-[--color-accent] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 4.5v15m7.5-7.5h-15"
-          />
-        </svg>
-        Import
-      </button>
-
-      <button
         onClick={() => setExportOpen(true)}
         disabled={!activeProjectId}
-        className="flex items-center gap-2 px-4 py-1.5 bg-[--color-bg-accent] text-[--color-text-primary] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+        className="flex items-center gap-2 px-3 py-1.5 bg-[--color-bg-accent] text-[--color-text-primary] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-          />
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
         </svg>
         Export
       </button>
-
-      {importOpen && activeProjectId && (
-        <ImportDialog
-          projectId={activeProjectId}
-          onClose={() => setImportOpen(false)}
-        />
-      )}
 
       {/* Logout */}
       <button
@@ -132,10 +140,7 @@ export function TopBar() {
       </button>
 
       {exportOpen && activeProjectId && (
-        <ExportDialog
-          projectId={activeProjectId}
-          onClose={() => setExportOpen(false)}
-        />
+        <ExportDialog projectId={activeProjectId} onClose={() => setExportOpen(false)} />
       )}
     </header>
   );

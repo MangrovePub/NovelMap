@@ -460,6 +460,126 @@ function ChunkRow({
   );
 }
 
+// ── Writing Guide ─────────────────────────────────────────────────────────────
+
+const GUIDE_SECTIONS = [
+  {
+    title: "5-Part Framework",
+    items: [
+      { label: "Part I — Disturbance", text: "Establish the board; seed the threat offstage. Emotional job: hook + intrigue, not full adrenaline." },
+      { label: "Part II — Expansion", text: "Widen the problem, tighten personal stakes. False leads, divided loyalties, early action beats show capability + vulnerability." },
+      { label: "Part III — Reversal", text: "Systems break. The model used to understand the crisis is wrong. Timeline accelerates." },
+      { label: "Part IV — Collapse", text: "Darkest section. Allies die/betray. Hero crosses a line. A sacrifice that cannot be undone." },
+      { label: "Part V — Reckoning", text: "Stop the crisis, then show real consequences. Official story ≠ true story. Seed next book." },
+    ],
+  },
+  {
+    title: "Scene Contract",
+    subtitle: "Each scene must do ≥ 2 of these:",
+    items: [
+      { label: "Advance plot", text: "New fact, new access, or new constraint." },
+      { label: "Increase pressure", text: "Time, risk, exposure, exhaustion." },
+      { label: "Complicate loyalties", text: "Misalignment inside the team or institutions." },
+      { label: "Reveal character under stress", text: "Decision, flaw, or wound." },
+      { label: "Shift the model", text: "What everyone believes changes." },
+    ],
+  },
+  {
+    title: "Sentence Craft",
+    items: [
+      { label: "Default pattern", text: "Subject → strong verb → object → minimal modifier. One main idea per sentence." },
+      { label: "Weak verbs", text: "Replace was/had/did/made with concrete verbs. 'A night-shift operator launched the malware.'" },
+      { label: "Front-loaded clauses", text: "'As he walked, thinking…' → Split. Lead with action." },
+      { label: "Too many ideas", text: "Break into a mini-sequence. Same username. Same time of night. All from inside the building." },
+      { label: "Throat-clearing", text: "Cut 'He began to…' / 'He started to…' — just do the thing." },
+    ],
+  },
+  {
+    title: "Escalation Ladder",
+    subtitle: "When a section feels flat, climb one rung:",
+    items: [
+      { label: "1–2", text: "Inconvenience → Embarrassment" },
+      { label: "3–4", text: "Loss of access → Legal jeopardy" },
+      { label: "5–6", text: "Bodily harm → Public exposure (Part III snaps here)" },
+      { label: "7–8", text: "Strategic failure → Moral injury (Part IV lives here)" },
+    ],
+  },
+  {
+    title: "Chapter Endings",
+    subtitle: "End on one of:",
+    items: [
+      { label: "A new question", text: "Reader must turn the page." },
+      { label: "A new cost", text: "Something lost that can't be recovered." },
+      { label: "A new clock", text: "Deadline or countdown introduced." },
+      { label: "A new betrayal", text: "Trust violated or allegiance shifted." },
+      { label: "A new constraint", text: "Option removed from the board." },
+    ],
+  },
+  {
+    title: "Techno-Thriller Triangle",
+    subtitle: "Every major scene should touch ≥ 2:",
+    items: [
+      { label: "Mechanism", text: "What is happening technically? What constraints are real?" },
+      { label: "Motive", text: "Who benefits, who loses, who's exposed?" },
+      { label: "Cost", text: "Who suffers right now? What does the protagonist sacrifice?" },
+    ],
+  },
+  {
+    title: "POV Lenses",
+    subtitle: "Each protagonist's default internal question:",
+    items: [
+      { label: "Engineer", text: "\"What fails first?\"" },
+      { label: "Investigator", text: "\"What doesn't fit?\"" },
+      { label: "Operator", text: "\"Where's the exit?\"" },
+      { label: "Historian", text: "\"What does this resemble?\"" },
+      { label: "Policy", text: "\"Who owns the narrative?\"" },
+    ],
+  },
+];
+
+function WritingGuide() {
+  const [openSection, setOpenSection] = useState<number | null>(0);
+
+  return (
+    <div className="flex flex-col gap-1 overflow-y-auto flex-1 pr-1">
+      <p className="text-[10px] text-[--color-text-muted] mb-2 italic">
+        5-Part Thriller Framework · Craft Rules
+      </p>
+      {GUIDE_SECTIONS.map((section, si) => (
+        <div key={si} className="rounded-lg border border-[--color-bg-accent] overflow-hidden">
+          <button
+            onClick={() => setOpenSection(openSection === si ? null : si)}
+            className="w-full flex items-center justify-between px-3 py-2 bg-[--color-bg-card] hover:bg-[--color-bg-accent] transition-colors text-left"
+          >
+            <div>
+              <span className="text-xs font-semibold text-[--color-text-primary]">{section.title}</span>
+              {section.subtitle && (
+                <span className="ml-2 text-[10px] text-[--color-text-muted]">{section.subtitle}</span>
+              )}
+            </div>
+            <svg
+              className={`w-3.5 h-3.5 text-[--color-text-muted] shrink-0 transition-transform ${openSection === si ? "rotate-180" : ""}`}
+              fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
+            </svg>
+          </button>
+          {openSection === si && (
+            <div className="px-3 py-2 bg-[--color-bg-body] flex flex-col gap-2">
+              {section.items.map((item, ii) => (
+                <div key={ii}>
+                  <div className="text-[10px] font-semibold text-[--color-accent]">{item.label}</div>
+                  <div className="text-[11px] text-[--color-text-muted] leading-relaxed mt-0.5">{item.text}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main view ─────────────────────────────────────────────────────────────────
 
 export function CraftStudioView() {
@@ -470,6 +590,7 @@ export function CraftStudioView() {
   const [editMode, setEditMode] = useState(false);
   const [draftTexts, setDraftTexts] = useState<Record<string, string>>({});
   const [saveConfirm, setSaveConfirm] = useState(false);
+  const [rightTab, setRightTab] = useState<"issues" | "guide">("issues");
 
   const { activeBookId } = useProjectStore();
   const queryClient = useQueryClient();
@@ -617,7 +738,7 @@ export function CraftStudioView() {
       {/* ── Left: Chapter list ──────────────────────────────────────────── */}
       <div className="w-56 shrink-0 flex flex-col gap-3 pr-3 border-r border-[--color-bg-accent] overflow-y-auto">
         <div>
-          <h1 className="font-serif text-xl font-bold text-[--color-text-primary]">Craft Studio</h1>
+          <h1 className="font-serif text-xl font-bold text-[--color-text-primary]">Dev Edit</h1>
           <p className="text-[11px] text-[--color-text-muted] mt-0.5">
             {summary
               ? `${summary.totals.resolved ?? 0}/${summary.totals.issues} resolved`
@@ -729,15 +850,28 @@ export function CraftStudioView() {
         </div>
       )}
 
-      {/* ── Right: Issue panel ──────────────────────────────────────────── */}
-      <AnimatePresence>
-        {selectedChunk !== null && detail && (
-          <motion.div
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 12 }}
-            className="w-[400px] shrink-0 pl-4 flex flex-col gap-2 overflow-hidden"
-          >
+      {/* ── Right: Issues + Writing Guide ───────────────────────────────── */}
+      <div className="w-[380px] shrink-0 pl-4 flex flex-col gap-2 overflow-hidden">
+        {/* Tab toggle */}
+        <div className="flex gap-1 shrink-0">
+          {(["issues", "guide"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setRightTab(tab)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize
+                ${rightTab === tab
+                  ? "bg-[--color-accent] text-white"
+                  : "bg-[--color-bg-accent] text-[--color-text-muted] hover:text-[--color-text-primary]"
+                }`}
+            >
+              {tab === "issues" ? "Edit Issues" : "Writing Guide"}
+            </button>
+          ))}
+        </div>
+
+        {/* Issues tab */}
+        {rightTab === "issues" && (
+          selectedChunk !== null && detail ? (
             <IssuePanel
               detail={detail}
               resolutions={resolutions}
@@ -750,9 +884,16 @@ export function CraftStudioView() {
               }}
               activeCategory={activeCategory}
             />
-          </motion.div>
+          ) : (
+            <div className="flex items-center justify-center flex-1 text-[--color-text-muted]">
+              <p className="text-xs italic">Select a chapter to see issues.</p>
+            </div>
+          )
         )}
-      </AnimatePresence>
+
+        {/* Guide tab */}
+        {rightTab === "guide" && <WritingGuide />}
+      </div>
 
       {/* ── Save confirmation modal ──────────────────────────────────────── */}
       {saveConfirm && (
